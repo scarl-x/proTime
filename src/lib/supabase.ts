@@ -1,0 +1,405 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Check if we have Supabase credentials
+export const hasSupabaseCredentials = !!(supabaseUrl && supabaseAnonKey);
+
+// Only create client if we have credentials
+export const supabase = hasSupabaseCredentials 
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      }
+    })
+  : null;
+
+// Log connection status for debugging
+if (typeof window !== 'undefined') {
+  if (hasSupabaseCredentials) {
+    console.log('✅ Supabase connected successfully');
+    console.log('📊 Database URL:', supabaseUrl);
+    console.log('🔑 Anon Key (first 20 chars):', supabaseAnonKey?.substring(0, 20) + '...');
+  } else {
+    console.log('❌ Supabase credentials not found');
+    console.log('🔧 Running in demo mode with local data');
+    console.log('📝 To connect to Supabase:');
+    console.log('   1. Get URL and anon key from Supabase Dashboard → Settings → API');
+    console.log('   2. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to environment variables');
+    console.log('   3. For Netlify: Site settings → Environment variables');
+  }
+  
+  // Test Supabase connection
+  if (supabase) {
+    supabase.from('users').select('count', { count: 'exact', head: true })
+      .then(({ count, error }) => {
+        if (error) {
+          console.error('❌ Supabase connection test failed:', error);
+        } else {
+          console.log('✅ Supabase connection test successful. Users count:', count);
+        }
+      });
+  }
+}
+
+// Database types
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          role: 'admin' | 'employee';
+          position?: string;
+          has_account: boolean;
+          password?: string;
+          birthday?: string;
+          employment_date?: string;
+          termination_date?: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          email: string;
+          role: 'admin' | 'employee';
+          position?: string;
+          has_account?: boolean;
+          password?: string;
+          birthday?: string;
+          employment_date?: string;
+          termination_date?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          email?: string;
+          role?: 'admin' | 'employee';
+          position?: string;
+          has_account?: boolean;
+          password?: string;
+          birthday?: string;
+          employment_date?: string;
+          termination_date?: string;
+          created_at?: string;
+        };
+      };
+      projects: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          color: string;
+          status: 'active' | 'completed' | 'on-hold';
+          team_members: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string;
+          color?: string;
+          status?: 'active' | 'completed' | 'on-hold';
+          team_members?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          color?: string;
+          status?: 'active' | 'completed' | 'on-hold';
+          team_members?: string[];
+          created_at?: string;
+        };
+      };
+      time_slots: {
+        Row: {
+          id: string;
+          employee_id: string;
+          project_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          task: string;
+          planned_hours: number;
+          actual_hours: number;
+          status: 'planned' | 'in-progress' | 'completed';
+          category: string;
+          created_at: string;
+          parent_task_id?: string;
+          task_sequence?: number;
+          total_task_hours?: number;
+          is_paused?: boolean;
+          paused_at?: string;
+          resumed_at?: string;
+          is_recurring?: boolean;
+          recurrence_type?: 'daily' | 'weekly' | 'monthly';
+          recurrence_interval?: number;
+          recurrence_end_date?: string;
+          recurrence_days?: string[];
+          parent_recurring_id?: string;
+          recurrence_count?: number;
+        };
+        Insert: {
+          id?: string;
+          employee_id: string;
+          project_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          task: string;
+          planned_hours?: number;
+          actual_hours?: number;
+          status?: 'planned' | 'in-progress' | 'completed';
+          category?: string;
+          created_at?: string;
+          parent_task_id?: string;
+          task_sequence?: number;
+          total_task_hours?: number;
+          is_paused?: boolean;
+          paused_at?: string;
+          resumed_at?: string;
+          is_recurring?: boolean;
+          recurrence_type?: 'daily' | 'weekly' | 'monthly';
+          recurrence_interval?: number;
+          recurrence_end_date?: string;
+          recurrence_days?: string[];
+          parent_recurring_id?: string;
+          recurrence_count?: number;
+        };
+        Update: {
+          id?: string;
+          employee_id?: string;
+          project_id?: string;
+          date?: string;
+          start_time?: string;
+          end_time?: string;
+          task?: string;
+          planned_hours?: number;
+          actual_hours?: number;
+          status?: 'planned' | 'in-progress' | 'completed';
+          category?: string;
+          created_at?: string;
+          parent_task_id?: string;
+          task_sequence?: number;
+          total_task_hours?: number;
+          is_paused?: boolean;
+          paused_at?: string;
+          resumed_at?: string;
+          is_recurring?: boolean;
+          recurrence_type?: 'daily' | 'weekly' | 'monthly';
+          recurrence_interval?: number;
+          recurrence_end_date?: string;
+          recurrence_days?: string[];
+          parent_recurring_id?: string;
+          recurrence_count?: number;
+        };
+      };
+      tasks: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          description: string;
+          planned_hours: number;
+          actual_hours: number;
+          hourly_rate: number;
+          total_cost: number;
+          status: 'new' | 'planned' | 'in-progress' | 'code-review' | 'testing-internal' | 'testing-client' | 'closed';
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          name: string;
+          description?: string;
+          planned_hours: number;
+          actual_hours?: number;
+          hourly_rate?: number;
+          status?: 'new' | 'planned' | 'in-progress' | 'code-review' | 'testing-internal' | 'testing-client' | 'closed';
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          name?: string;
+          description?: string;
+          planned_hours?: number;
+          actual_hours?: number;
+          hourly_rate?: number;
+          status?: 'new' | 'planned' | 'in-progress' | 'code-review' | 'testing-internal' | 'testing-client' | 'closed';
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      task_assignments: {
+        Row: {
+          id: string;
+          task_id: string;
+          employee_id: string;
+          allocated_hours: number;
+          actual_hours: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          task_id: string;
+          employee_id: string;
+          allocated_hours: number;
+          actual_hours?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          task_id?: string;
+          employee_id?: string;
+          allocated_hours?: number;
+          actual_hours?: number;
+          created_at?: string;
+        };
+      };
+      task_categories: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          default_hours: number;
+          default_hourly_rate: number;
+          color: string;
+          is_active: boolean;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string;
+          default_hours?: number;
+          default_hourly_rate?: number;
+          color?: string;
+          is_active?: boolean;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          default_hours?: number;
+          default_hourly_rate?: number;
+          color?: string;
+          is_active?: boolean;
+          created_by?: string;
+          created_at?: string;
+        };
+      };
+      leave_requests: {
+        Row: {
+          id: string;
+          employee_id: string;
+          type: 'vacation' | 'sick_leave' | 'personal_leave' | 'compensatory_leave';
+          start_date: string;
+          end_date: string;
+          days_count: number;
+          reason: string;
+          status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          approved_by?: string;
+          approved_at?: string;
+          notes?: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          employee_id: string;
+          type: 'vacation' | 'sick_leave' | 'personal_leave' | 'compensatory_leave';
+          start_date: string;
+          end_date: string;
+          days_count: number;
+          reason: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          approved_by?: string;
+          approved_at?: string;
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          employee_id?: string;
+          type?: 'vacation' | 'sick_leave' | 'personal_leave' | 'compensatory_leave';
+          start_date?: string;
+          end_date?: string;
+          days_count?: number;
+          reason?: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+          approved_by?: string;
+          approved_at?: string;
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      bookings: {
+        Row: {
+          id: string;
+          requester_id: string;
+          employee_id: string;
+          project_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          duration_hours: number;
+          task_description: string;
+          status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
+          notes?: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          requester_id: string;
+          employee_id: string;
+          project_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          duration_hours: number;
+          task_description: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          requester_id?: string;
+          employee_id?: string;
+          project_id?: string;
+          date?: string;
+          start_time?: string;
+          end_time?: string;
+          duration_hours?: number;
+          task_description?: string;
+          status?: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+    };
+  };
+}
