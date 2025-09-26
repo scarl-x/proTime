@@ -27,7 +27,7 @@ export const EmployeeAvailabilityView: React.FC<EmployeeAvailabilityViewProps> =
 
   const weekDates = getWeekDates(selectedWeek);
   const availableEmployees = employees.filter(emp => 
-    emp.role === 'employee' && emp.id !== currentUser.id
+    emp.id !== currentUser.id
   );
 
   const getEmployeeScheduleForDate = (employeeId: string, date: string) => {
@@ -142,7 +142,10 @@ export const EmployeeAvailabilityView: React.FC<EmployeeAvailabilityViewProps> =
                           {employee.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {employee.position || 'Сотрудник'}
+                          {employee.role === 'admin' 
+                            ? `Администратор${employee.position ? ` — ${employee.position}` : ''}`
+                            : employee.position || 'Сотрудник'
+                          }
                         </div>
                       </div>
                     </div>

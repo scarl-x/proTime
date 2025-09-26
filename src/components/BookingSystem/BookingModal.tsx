@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, User, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
-import { Booking, User as UserType, Project, TimeSlot } from '../../types';
+import { X, Clock, User, Calendar, AlertCircle, CheckCircle, Tag } from 'lucide-react';
+import { Booking, User as UserType, Project, TimeSlot, TaskCategory } from '../../types';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface BookingModalProps {
   checkAvailability: (employeeId: string, date: string, startTime: string, endTime: string) => boolean;
   selectedEmployee?: UserType;
   selectedDate?: string;
+  categories?: TaskCategory[];
 }
 
 export const BookingModal: React.FC<BookingModalProps> = ({
@@ -26,6 +27,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   checkAvailability,
   selectedEmployee,
   selectedDate,
+  categories = [],
 }) => {
   const [formData, setFormData] = useState({
     employeeId: selectedEmployee?.id || '',
@@ -35,6 +37,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     endTime: '16:00',
     taskDescription: '',
     notes: '',
+    category: 'Разработка',
   });
   const [isAvailable, setIsAvailable] = useState(true);
   const [conflictDetails, setConflictDetails] = useState<string>('');
@@ -123,6 +126,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       endTime: '16:00',
       taskDescription: '',
       notes: '',
+      category: 'Разработка',
     });
     onClose();
   };
@@ -166,7 +170,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <option value="">Выберите сотрудника</option>
                 {availableEmployees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.name} - {employee.position || 'Сотрудник'}
+                    {employee.name} - {employee.role === 'admin' 
+                      ? `Администратор${employee.position ? ` — ${employee.position}` : ''}`
+                      : employee.position || 'Сотрудник'
+                    }
                   </option>
                 ))}
               </select>
@@ -293,6 +300,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               placeholder="Опишите, для чего нужно забронировать время сотрудника..."
               required
             />
+          </div>
+
+          {/* Category Selection */}
+          <div className="mt-6">
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <Tag className="h-4 w-4" />
+              <span>Категория</span>
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {categories.length > 0 ? (
+                categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="Разработка">Разработка</option>
+                  <option value="Тестирование">Тестирование</option>
+                  <option value="Код-ревью">Код-ревью</option>
+                  <option value="Совещание">Совещание</option>
+                  <option value="Планирование">Планирование</option>
+                  <option value="Документация">Документация</option>
+                  <option value="Поддержка">Поддержка</option>
+                  <option value="Исследование">Исследование</option>
+                </>
+              )}
+            </select>
           </div>
 
           {/* Notes */}

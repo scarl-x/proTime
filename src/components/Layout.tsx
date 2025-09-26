@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Users, Calendar, BarChart3, LogOut, Settings, UserPlus, Folder, TrendingUp, CalendarCheck, Plane, Tag, MessageCircle, User as UserIcon } from 'lucide-react';
+import { Clock, Users, Calendar, BarChart3, LogOut, Settings, UserPlus, Folder, TrendingUp, CalendarCheck, Plane, Tag, MessageCircle, User as UserIcon, ListTodo, Send } from 'lucide-react';
 import { User } from '../types';
 import { NotificationCenter } from './Notifications/NotificationCenter';
 
@@ -37,17 +37,19 @@ export const Layout: React.FC<LayoutProps> = ({
   employees = [],
   projects = [],
 }) => {
-  const [activeGroup, setActiveGroup] = React.useState<string>('calendar');
-  const [activeSubTab, setActiveSubTab] = React.useState<string>('');
+  const [activeGroup, setActiveGroup] = React.useState<string>('personal');
+  const [activeSubTab, setActiveSubTab] = React.useState<string>('calendar');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const adminTabGroups: (TabGroup | Tab)[] = [
-    { id: 'calendar', 
-      label: 'Календарь', 
-      icon: Calendar,
+    { id: 'personal', 
+      label: 'Мое рабочее место', 
+      icon: UserIcon,
       subTabs: [
         { id: 'calendar', label: 'Календарь', icon: Calendar },
         { id: 'my-schedule', label: 'Мое расписание', icon: Clock },
+        { id: 'backlog', label: 'Нераспределенные задачи', icon: ListTodo },
+        { id: 'task-categories', label: 'Категории задач', icon: Tag },
         { id: 'timesheet', label: 'Табель', icon: Clock },
       ]
     },
@@ -67,7 +69,6 @@ export const Layout: React.FC<LayoutProps> = ({
       icon: Folder,
       subTabs: [
         { id: 'projects', label: 'Управление проектами', icon: Folder },
-        { id: 'task-categories', label: 'Категории задач', icon: Tag },
       ]
     },
     {
@@ -77,6 +78,7 @@ export const Layout: React.FC<LayoutProps> = ({
       subTabs: [
         { id: 'bookings', label: 'Доступность команды', icon: CalendarCheck },
         { id: 'my-bookings', label: 'Мои бронирования', icon: CalendarCheck },
+        { id: 'my-requests', label: 'Мои запросы', icon: Send },
       ]
     },
     {
@@ -113,6 +115,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const employeeTabGroups: (TabGroup | Tab)[] = [
     { id: 'calendar', label: 'Мой календарь', icon: Calendar },
     { id: 'my-schedule', label: 'Мое расписание', icon: Clock },
+    { id: 'backlog', label: 'Нераспределенные задачи', icon: ListTodo },
+    { id: 'task-categories', label: 'Категории задач', icon: Tag },
     ...(isTeamLead ? [{ id: 'lead-projects', label: 'Проекты', icon: Folder } as Tab] : []),
     {
       id: 'team-group',
@@ -122,6 +126,7 @@ export const Layout: React.FC<LayoutProps> = ({
         { id: 'birthdays', label: 'Дни рождения', icon: Calendar },
         { id: 'bookings', label: 'Бронирование времени', icon: CalendarCheck },
         { id: 'my-bookings', label: 'Мои бронирования', icon: CalendarCheck },
+        { id: 'my-requests', label: 'Мои запросы', icon: Send },
       ]
     },
     { id: 'leave-requests', label: 'Мои отпуска', icon: Plane },

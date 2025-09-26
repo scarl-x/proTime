@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, User, Tag, Calendar, Split, Pause, Play, AlertCircle, Repeat, Info } from 'lucide-react';
-import { TimeSlot, User as UserType, Project } from '../types';
+import { TimeSlot, User as UserType, Project, TaskCategory } from '../types';
 import { RecurringTaskConfig, generateRecurringTasks, getRecurrenceDescription, WEEKDAY_NAMES } from '../utils/recurringUtils';
 
 interface TimeSlotModalProps {
@@ -13,9 +13,12 @@ interface TimeSlotModalProps {
   currentUser: UserType;
   projects: Project[];
   timeSlots?: TimeSlot[];
+  preselectedTask?: any; // Предустановленная задача из backlog
+  categories?: TaskCategory[];
 }
 
-const categories = [
+// Fallback categories if no categories are provided
+const defaultCategories = [
   'Разработка',
   'Тестирование',
   'Код-ревью',
@@ -36,6 +39,8 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   currentUser,
   projects,
   timeSlots = [],
+  preselectedTask,
+  categories = [],
 }) => {
   const [formData, setFormData] = useState({
     employeeId: currentUser.id,
@@ -46,19 +51,19 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     task: '',
     plannedHours: 8,
     actualHours: 0,
-    status: 'planned',
+    status: 'planned' as 'planned' | 'in-progress' | 'completed',
     category: 'Разработка',
-    parentTaskId: undefined,
-    taskSequence: undefined,
-    totalTaskHours: undefined,
+    parentTaskId: undefined as string | undefined,
+    taskSequence: undefined as number | undefined,
+    totalTaskHours: undefined as number | undefined,
     isPaused: false,
     isRecurring: false,
     recurrenceType: undefined as 'daily' | 'weekly' | 'monthly' | undefined,
     recurrenceInterval: 1,
-    recurrenceEndDate: undefined,
-    recurrenceDays: undefined,
-    parentRecurringId: undefined,
-    recurrenceCount: undefined,
+    recurrenceEndDate: undefined as string | undefined,
+    recurrenceDays: undefined as string[] | undefined,
+    parentRecurringId: undefined as string | undefined,
+    recurrenceCount: undefined as number | undefined,
   });
   const [showSplitOptions, setShowSplitOptions] = useState(false);
   const [splitDays, setSplitDays] = useState(1);
@@ -105,6 +110,33 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         setSplitTaskParts(allParts);
         setIsEditingSplitTask(true);
       }
+    } else if (preselectedTask) {
+      // Если передана предустановленная задача из backlog
+      setFormData({
+        employeeId: currentUser.id,
+        projectId: preselectedTask.projectId,
+        date: new Date().toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        task: preselectedTask.title,
+        plannedHours: 8,
+        actualHours: 0,
+        status: 'planned' as 'planned' | 'in-progress' | 'completed',
+        category: 'Разработка',
+        parentTaskId: undefined,
+        taskSequence: undefined,
+        totalTaskHours: undefined,
+        isPaused: false,
+        isRecurring: false,
+        recurrenceType: undefined,
+        recurrenceInterval: 1,
+        recurrenceEndDate: undefined,
+        recurrenceDays: undefined,
+        parentRecurringId: undefined,
+        recurrenceCount: undefined,
+      });
+      setIsEditingSplitTask(false);
+      setSplitTaskParts([]);
     } else {
       setFormData({
         employeeId: currentUser.id,
@@ -115,7 +147,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         task: '',
         plannedHours: 8,
         actualHours: 0,
-        status: 'planned',
+        status: 'planned' as 'planned' | 'in-progress' | 'completed',
         category: 'Разработка',
         parentTaskId: undefined,
         taskSequence: undefined,
@@ -132,7 +164,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       setIsEditingSplitTask(false);
       setSplitTaskParts([]);
     }
-  }, [slot, currentUser.id, projects, timeSlots]);
+  }, [slot, preselectedTask, currentUser.id, projects, timeSlots]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,9 +195,9 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       handleRecurringTask();
     } else {
       if (slot) {
-        onSave({ ...finalFormData, id: slot.id });
+        onSave({ ...finalFormData, id: slot.id } as TimeSlot);
       } else {
-        onSave(finalFormData);
+        onSave(finalFormData as Omit<TimeSlot, 'id'>);
       }
     }
     onClose();
@@ -213,7 +245,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
           task: `${formData.task} (Часть ${index + 1}/${splitDays})`,
         };
         
-        onSave(splitSlot);
+        onSave(splitSlot as Omit<TimeSlot, 'id'>);
       }
     });
   };
@@ -232,7 +264,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         status: index === 0 ? formData.status : part.status,
         category: formData.category, // Категорию можем менять для всех частей
       };
-      onSave(updatedPart);
+      onSave(updatedPart as TimeSlot);
     });
   };
 
@@ -255,7 +287,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         resumedAt: formData.isPaused ? new Date().toISOString() : undefined,
         id: slot.id,
       };
-      onSave(updatedSlot);
+      onSave(updatedSlot as TimeSlot);
       onClose();
     }
   };
@@ -593,11 +625,19 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
+                    {categories.length > 0 ? (
+                      categories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name}
+                        </option>
+                      ))
+                    ) : (
+                      defaultCategories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>
@@ -703,11 +743,19 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
+                  {categories.length > 0 ? (
+                    categories.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))
+                  ) : (
+                    defaultCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -718,7 +766,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'planned' | 'in-progress' | 'completed' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="planned">Запланировано</option>

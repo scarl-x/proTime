@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, User, Calendar, CheckCircle, XCircle, AlertCircle, Eye, MessageSquare } from 'lucide-react';
+import { Clock, User, Calendar, CheckCircle, XCircle, AlertCircle, Eye, MessageSquare, Send, Inbox, Trash2 } from 'lucide-react';
 import { Booking, User as UserType, Project } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -10,6 +10,7 @@ interface BookingListProps {
   currentUser: UserType;
   onUpdateBooking: (id: string, updates: Partial<Booking>) => void;
   onDeleteBooking: (id: string) => void;
+  defaultFilter?: 'all' | 'my-requests' | 'my-bookings';
 }
 
 export const BookingList: React.FC<BookingListProps> = ({
@@ -19,8 +20,9 @@ export const BookingList: React.FC<BookingListProps> = ({
   currentUser,
   onUpdateBooking,
   onDeleteBooking,
+  defaultFilter = 'my-bookings',
 }) => {
-  const [filter, setFilter] = useState<'all' | 'my-requests' | 'my-bookings'>('all');
+  const [filter, setFilter] = useState<'all' | 'my-requests' | 'my-bookings'>(defaultFilter);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
@@ -35,11 +37,31 @@ export const BookingList: React.FC<BookingListProps> = ({
   const getFilteredBookings = () => {
     let filtered = bookings;
 
+    // Use defaultFilter if available, otherwise use filter state
+    const currentFilter = defaultFilter || filter;
+
+    // Debug logging
+    console.log('BookingList filter debug:', {
+      currentFilter,
+      defaultFilter,
+      filter,
+      currentUserId: currentUser.id,
+      totalBookings: bookings.length
+    });
+
     // Filter by user relationship
-    if (filter === 'my-requests') {
-      filtered = filtered.filter(booking => booking.requesterId === currentUser.id);
-    } else if (filter === 'my-bookings') {
-      filtered = filtered.filter(booking => booking.employeeId === currentUser.id);
+    if (currentFilter === 'my-requests') {
+      filtered = filtered.filter(booking => {
+        const isMyRequest = booking.requesterId === currentUser.id;
+        console.log('my-requests filter:', { bookingId: booking.id, requesterId: booking.requesterId, employeeId: booking.employeeId, isMyRequest });
+        return isMyRequest;
+      });
+    } else if (currentFilter === 'my-bookings') {
+      filtered = filtered.filter(booking => {
+        const isMyBooking = booking.employeeId === currentUser.id;
+        console.log('my-bookings filter:', { bookingId: booking.id, requesterId: booking.requesterId, employeeId: booking.employeeId, isMyBooking });
+        return isMyBooking;
+      });
     }
 
     // Filter by status
@@ -47,6 +69,7 @@ export const BookingList: React.FC<BookingListProps> = ({
       filtered = filtered.filter(booking => booking.status === statusFilter);
     }
 
+    console.log('Filtered bookings count:', filtered.length);
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
@@ -97,26 +120,55 @@ export const BookingList: React.FC<BookingListProps> = ({
            ['pending', 'approved'].includes(booking.status);
   };
 
+  const canDeleteBooking = (booking: Booking) => {
+    return (booking.requesterId === currentUser.id || booking.employeeId === currentUser.id || currentUser.role === 'admin') &&
+           booking.status === 'cancelled';
+  };
+
   const filteredBookings = getFilteredBookings();
+  const currentFilter = defaultFilter || filter;
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
+      {/* Filters - only show when not in a specific tab */}
+      {!defaultFilter && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-4 flex-wrap">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">Показать:</span>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Все бронирования</option>
+                <option value="my-requests">Мои запросы</option>
+                <option value="my-bookings">Мои бронирования</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">Статус:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Все статусы</option>
+                <option value="pending">Ожидает подтверждения</option>
+                <option value="approved">Подтверждено</option>
+                <option value="rejected">Отклонено</option>
+                <option value="completed">Завершено</option>
+                <option value="cancelled">Отменено</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status filter - always show */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center space-x-4 flex-wrap">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Показать:</span>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">Все бронирования</option>
-              <option value="my-requests">Мои запросы</option>
-              <option value="my-bookings">Мое время</option>
-            </select>
-          </div>
-
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium text-gray-700">Статус:</span>
             <select
@@ -132,15 +184,54 @@ export const BookingList: React.FC<BookingListProps> = ({
               <option value="cancelled">Отменено</option>
             </select>
           </div>
+          
+          {/* Quick filter for cancelled bookings */}
+          {statusFilter !== 'cancelled' && (
+            <button
+              onClick={() => setStatusFilter('cancelled')}
+              className="px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg border border-gray-300 hover:border-red-300 transition duration-200"
+            >
+              <Trash2 className="h-4 w-4 inline mr-1" />
+              Показать отмененные
+            </button>
+          )}
+          
+          {statusFilter === 'cancelled' && (
+            <button
+              onClick={() => setStatusFilter('all')}
+              className="px-3 py-2 text-sm text-red-600 hover:text-gray-600 hover:bg-gray-50 rounded-lg border border-red-300 hover:border-gray-300 transition duration-200"
+            >
+              Показать все
+            </button>
+          )}
         </div>
       </div>
 
       {/* Bookings List */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Бронирования ({filteredBookings.length})
-          </h3>
+          <div className="flex items-center space-x-2">
+            {currentFilter === 'my-requests' && <Send className="h-5 w-5 text-blue-600" />}
+            {currentFilter === 'my-bookings' && <Inbox className="h-5 w-5 text-green-600" />}
+            <h3 className="text-lg font-semibold text-gray-900">
+              {currentFilter === 'my-requests' 
+                ? `Мои запросы (${filteredBookings.length})`
+                : currentFilter === 'my-bookings'
+                ? `Мои бронирования (${filteredBookings.length})`
+                : `Бронирования (${filteredBookings.length})`
+              }
+            </h3>
+          </div>
+          {currentFilter === 'my-requests' && (
+            <p className="text-sm text-gray-600 mt-1">
+              Ваши запросы на бронирование времени других участников команды (вы запрашиваете)
+            </p>
+          )}
+          {currentFilter === 'my-bookings' && (
+            <p className="text-sm text-gray-600 mt-1">
+              Запросы других участников на бронирование вашего времени (вас запрашивают)
+            </p>
+          )}
         </div>
 
         {filteredBookings.length > 0 ? (
@@ -152,6 +243,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <div className="flex items-center space-x-3 mb-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
                         {getStatusLabel(booking.status)}
+                        {booking.status === 'cancelled' && (
+                          <span className="ml-1 text-xs opacity-75">(можно удалить)</span>
+                        )}
                       </span>
                       <span className="text-sm text-gray-500">
                         {formatDate(booking.createdAt)}
@@ -166,13 +260,21 @@ export const BookingList: React.FC<BookingListProps> = ({
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4" />
                         <span>
-                          <strong>Запросил:</strong> {getEmployeeName(booking.requesterId)}
+                          <strong>Запросил:</strong> 
+                          <span className={booking.requesterId === currentUser.id ? 'font-bold text-blue-600' : ''}>
+                            {getEmployeeName(booking.requesterId)}
+                            {booking.requesterId === currentUser.id && ' (Вы)'}
+                          </span>
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4" />
                         <span>
-                          <strong>Сотрудник:</strong> {getEmployeeName(booking.employeeId)}
+                          <strong>Сотрудник:</strong> 
+                          <span className={booking.employeeId === currentUser.id ? 'font-bold text-green-600' : ''}>
+                            {getEmployeeName(booking.employeeId)}
+                            {booking.employeeId === currentUser.id && ' (Вы)'}
+                          </span>
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -263,6 +365,20 @@ export const BookingList: React.FC<BookingListProps> = ({
                         title="Отменить бронирование"
                       >
                         <XCircle className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {canDeleteBooking(booking) && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Вы уверены, что хотите удалить это отмененное бронирование?')) {
+                            onDeleteBooking(booking.id);
+                          }
+                        }}
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition duration-200"
+                        title="Удалить отмененное бронирование"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     )}
                   </div>

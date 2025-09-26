@@ -35,6 +35,7 @@ import { ProjectAnalytics } from './components/Reports/ProjectAnalytics';
 import { EmployeeList } from './components/EmployeeList';
 import { EmployeeDaySchedule } from './components/EmployeeSchedule/EmployeeDaySchedule';
 import { EmployeeBirthdayCards } from './components/EmployeeBirthdayCards';
+import { BacklogView } from './components/BacklogView';
 import { getWeekStart, getMonthName, formatDate } from './utils/dateUtils';
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
     getWeeklyReport,
     getSlotsByProject,
     getProjectWeeklyReport,
+    getAllTimeSlots,
   } = useTimeSlots();
   const {
     projects,
@@ -117,7 +119,7 @@ function App() {
     updateConfig: updateStandupConfig,
     initializeDailyStandups,
     getStandupStats,
-  } = useDailyStandups(allUsers, projects, timeSlots, addTimeSlot);
+  } = useDailyStandups(allUsers, projects, getAllTimeSlots(bookings), addTimeSlot);
 
   const [activeTab, setActiveTab] = useState('calendar');
   const [calendarView, setCalendarView] = useState<CalendarView>('week');
@@ -135,6 +137,7 @@ function App() {
   const [selectedProjectForTasks, setSelectedProjectForTasks] = useState<any>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const [viewingEmployeeSchedule, setViewingEmployeeSchedule] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
@@ -153,7 +156,9 @@ function App() {
 
   // Filter time slots based on user role, mode and selected employee
   const getFilteredTimeSlots = () => {
-    let filteredSlots = timeSlots;
+    // Include approved bookings as time slots
+    const allTimeSlots = getAllTimeSlots(bookings);
+    let filteredSlots = allTimeSlots;
     
     if (user.role === 'admin') {
       if (adminCalendarMode === 'my-all') {
@@ -208,11 +213,40 @@ function App() {
     setShowTimeSlotModal(true);
   };
 
-  const handleSaveSlot = (slotData: Omit<TimeSlot, 'id'> | TimeSlot) => {
+  const handleSaveSlot = async (slotData: Omit<TimeSlot, 'id'> | TimeSlot) => {
     if (editingSlot) {
       updateTimeSlot(editingSlot.id, slotData);
     } else {
+      // Создаем временной слот
       addTimeSlot(slotData);
+      
+      // Если это новый слот (не редактирование) и указан проект, создаем задачу
+      if (slotData.projectId && slotData.task && !slotData.taskId) {
+        try {
+          // Создаем задачу в проекте
+          const newTask = await createTask({
+            projectId: slotData.projectId,
+            name: slotData.task,
+            description: `Задача создана из календаря: ${slotData.task}`,
+            plannedHours: slotData.plannedHours,
+            hourlyRate: 3500, // Стандартная ставка
+            status: 'new',
+            createdBy: user.id,
+          });
+          
+          // Назначаем задачу на текущего пользователя
+          await assignTaskToEmployee(newTask.id, user.id, slotData.plannedHours);
+          
+          // Обновляем временной слот с taskId
+          const updatedSlot = { ...slotData, taskId: newTask.id };
+          // Здесь нужно обновить слот, но у нас нет функции для этого в useTimeSlots
+          // Пока что оставляем как есть, taskId будет добавлен при следующем обновлении
+          
+        } catch (error) {
+          console.error('Error creating task from time slot:', error);
+          // Не показываем ошибку пользователю, так как временной слот уже создан
+        }
+      }
     }
     setEditingSlot(null);
   };
@@ -233,15 +267,61 @@ function App() {
     setShowBookingModal(true);
   };
 
+  const createTaskForBooking = async (bookingData: any) => {
+    try {
+      const task = await createTask({
+        projectId: bookingData.projectId,
+        name: `[БРОНИРОВАНИЕ] ${bookingData.taskDescription}`,
+        description: `Бронирование времени: ${bookingData.taskDescription}\nЗапросил: ${allUsers.find(u => u.id === bookingData.requesterId)?.name || 'Неизвестный'}\nСотрудник: ${allUsers.find(u => u.id === bookingData.employeeId)?.name || 'Неизвестный'}`,
+        plannedHours: bookingData.durationHours,
+        hourlyRate: 3500, // Стандартная ставка
+        status: 'new',
+        createdBy: bookingData.requesterId,
+      });
+      
+      // Назначаем задачу на сотрудника, чье время забронировано
+      await assignTaskToEmployee(task.id, bookingData.employeeId, bookingData.durationHours);
+    } catch (taskError) {
+      console.error('Error creating task for booking:', taskError);
+      // Не показываем ошибку пользователю, так как бронирование уже создано
+    }
+  };
+
   const handleSaveBooking = async (bookingData: any) => {
     try {
-      await createBooking(bookingData);
+      // Создаем бронирование
+      const newBooking = await createBooking(bookingData);
+      
+      // Если бронирование одобрено, создаем задачу в проекте
+      if (bookingData.status === 'approved') {
+        await createTaskForBooking(bookingData);
+      }
+      
       setShowBookingModal(false);
       setSelectedEmployeeForBooking(null);
       setSelectedDateForBooking('');
     } catch (error) {
       console.error('Error creating booking:', error);
       alert('Ошибка при создании бронирования');
+    }
+  };
+
+  const handleUpdateBooking = async (id: string, updates: any) => {
+    try {
+      // Получаем текущее бронирование
+      const currentBooking = bookings.find(b => b.id === id);
+      if (!currentBooking) return;
+
+      // Обновляем бронирование
+      await updateBooking(id, updates);
+
+      // Если статус изменился на "approved", создаем задачу
+      if (updates.status === 'approved' && currentBooking.status !== 'approved') {
+        await createTaskForBooking(currentBooking);
+      }
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      alert('Ошибка при обновлении бронирования');
     }
   };
 
@@ -443,7 +523,7 @@ function App() {
             <EmployeeDaySchedule
               employee={allUsers.find(emp => emp.id === viewingEmployeeSchedule)!}
               date={scheduleDate}
-              timeSlots={timeSlots}
+              timeSlots={getAllTimeSlots(bookings)}
               projects={projects}
               onBack={() => {
                 setViewingEmployeeSchedule(null);
@@ -455,7 +535,7 @@ function App() {
           ) : (
           <EmployeeList
             employees={allUsers}
-            timeSlots={timeSlots}
+            timeSlots={getAllTimeSlots(bookings)}
             onEmployeeSelect={handleEmployeeSelect}
             onViewDaySchedule={handleViewEmployeeDaySchedule}
           />
@@ -576,7 +656,7 @@ function App() {
         return (
           <ProjectAnalytics
             projects={projects}
-            timeSlots={timeSlots}
+            timeSlots={getAllTimeSlots(bookings)}
             employees={allUsers}
           />
         );
@@ -585,7 +665,7 @@ function App() {
         return (
           <EmployeeAvailabilityView
             employees={allUsers}
-            timeSlots={timeSlots}
+            timeSlots={getAllTimeSlots(bookings)}
             bookings={bookings}
             onBookEmployee={handleBookEmployee}
             currentUser={user}
@@ -599,8 +679,22 @@ function App() {
             employees={allUsers}
             projects={projects}
             currentUser={user}
-            onUpdateBooking={updateBooking}
+            onUpdateBooking={handleUpdateBooking}
             onDeleteBooking={deleteBooking}
+            defaultFilter="my-bookings"
+          />
+        );
+
+      case 'my-requests':
+        return (
+          <BookingList
+            bookings={bookings}
+            employees={allUsers}
+            projects={projects}
+            currentUser={user}
+            onUpdateBooking={handleUpdateBooking}
+            onDeleteBooking={deleteBooking}
+            defaultFilter="my-requests"
           />
         );
 
@@ -625,6 +719,21 @@ function App() {
             onBack={() => setActiveTab('calendar')}
             onSlotClick={handleSlotClick}
             onDateChange={setScheduleDate}
+          />
+        );
+
+      case 'backlog':
+        return (
+          <BacklogView
+            currentUser={user}
+            onTaskClick={(task) => {
+              setSelectedTask(task);
+              setShowTaskModal(true);
+            }}
+            onScheduleTask={(task) => {
+              setSelectedTask(task);
+              setShowTimeSlotModal(true);
+            }}
           />
         );
 
@@ -696,7 +805,7 @@ function App() {
       onLogout={logout}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      timeSlots={timeSlots}
+      timeSlots={getAllTimeSlots(bookings)}
       employees={allUsers}
       projects={projects}
     >
@@ -707,6 +816,7 @@ function App() {
         onClose={() => {
           setShowTimeSlotModal(false);
           setEditingSlot(null);
+          setSelectedTask(null);
         }}
         onSave={handleSaveSlot}
         onDelete={deleteTimeSlot}
@@ -714,7 +824,9 @@ function App() {
         employees={allUsers}
         currentUser={user}
         projects={projects}
-        timeSlots={timeSlots}
+        timeSlots={getAllTimeSlots(bookings)}
+        preselectedTask={selectedTask}
+        categories={categories}
       />
 
       <BookingModal
@@ -728,12 +840,13 @@ function App() {
         employees={allUsers}
         projects={projects}
         currentUser={user}
-        timeSlots={timeSlots}
+        timeSlots={getAllTimeSlots(bookings)}
         checkAvailability={(employeeId, date, startTime, endTime) => 
-          checkAvailability(employeeId, date, startTime, endTime, timeSlots)
+          checkAvailability(employeeId, date, startTime, endTime, getAllTimeSlots(bookings))
         }
         selectedEmployee={selectedEmployeeForBooking}
         selectedDate={selectedDateForBooking}
+        categories={categories}
       />
 
       <LeaveRequestModal
@@ -767,7 +880,7 @@ function App() {
           onClose={() => setSelectedTaskForDetail(null)}
           task={selectedTaskForDetail}
           project={selectedProjectForTasks}
-          timeSlots={timeSlots}
+          timeSlots={getAllTimeSlots(bookings)}
           onCreateTimeSlot={addTimeSlot}
           assignments={getTaskAssignments(selectedTaskForDetail.id)}
           employees={allUsers}

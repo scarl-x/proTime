@@ -30,6 +30,36 @@ export const useBookings = () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
+      {
+        id: '2',
+        requesterId: '1', // Админ запрашивает время
+        employeeId: '2',
+        projectId: '1',
+        date: new Date().toISOString().split('T')[0],
+        startTime: '10:00',
+        endTime: '12:00',
+        durationHours: 2,
+        taskDescription: 'Консультация по архитектуре проекта',
+        status: 'pending',
+        notes: 'Нужна помощь с выбором технологий',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '3',
+        requesterId: '3',
+        employeeId: '1', // Админа бронируют
+        projectId: '1',
+        date: new Date().toISOString().split('T')[0],
+        startTime: '15:00',
+        endTime: '17:00',
+        durationHours: 2,
+        taskDescription: 'Код-ревью и обсуждение задач',
+        status: 'approved',
+        notes: 'Проверить качество кода',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
     ];
     setBookings(demoBookings);
   };

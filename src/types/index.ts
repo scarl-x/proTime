@@ -27,6 +27,7 @@ export interface TimeSlot {
   id: string;
   employeeId: string;
   projectId: string; // Привязка к проекту
+  taskId?: string; // ID задачи из системы задач
   date: string;
   startTime: string;
   endTime: string;

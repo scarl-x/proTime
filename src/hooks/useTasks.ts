@@ -45,6 +45,20 @@ export const useTasks = () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
+      {
+        id: '3',
+        projectId: '1',
+        name: 'Тестовая задача для backlog',
+        description: 'Задача для тестирования функциональности нераспределенных задач',
+        plannedHours: 8,
+        actualHours: 0,
+        hourlyRate: 3500,
+        totalCost: 28000,
+        status: 'new',
+        createdBy: '1',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
     ];
     setTasks(demoTasks);
 
@@ -71,6 +85,22 @@ export const useTasks = () => {
         employeeId: '2',
         allocatedHours: 35,
         actualHours: 28,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: '4',
+        taskId: '3',
+        employeeId: '1',
+        allocatedHours: 8,
+        actualHours: 0,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: '5',
+        taskId: '2',
+        employeeId: '1',
+        allocatedHours: 30,
+        actualHours: 0,
         createdAt: new Date().toISOString(),
       },
     ];

@@ -112,6 +112,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
       onCreateTimeSlot({
         employeeId: employee.id,
         projectId: project.id,
+        taskId: task.id,
         date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,
@@ -157,6 +158,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
       onCreateTimeSlot({
         employeeId: employee.id,
         projectId: project.id,
+        taskId: task.id,
         date: slot.date,
         startTime: slot.startTime,
         endTime: slot.endTime,

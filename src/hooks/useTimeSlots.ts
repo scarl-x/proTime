@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TimeSlot, WeeklyReport } from '../types';
+import { TimeSlot, WeeklyReport, Booking } from '../types';
 import { supabase, hasSupabaseCredentials } from '../lib/supabase';
 import { useEffect } from 'react';
 import { generateRecurringTasks, RecurringTaskConfig } from '../utils/recurringUtils';
@@ -25,6 +25,7 @@ export const useTimeSlots = () => {
         id: '1',
         employeeId: '2',
         projectId: '1',
+        taskId: 'task-1',
         date: today.toISOString().split('T')[0],
         startTime: '09:00',
         endTime: '17:00',
@@ -42,6 +43,7 @@ export const useTimeSlots = () => {
         id: '2',
         employeeId: '3',
         projectId: '1',
+        taskId: 'task-2',
         date: yesterday.toISOString().split('T')[0],
         startTime: '10:00',
         endTime: '18:00',
@@ -50,6 +52,24 @@ export const useTimeSlots = () => {
         actualHours: 8,
         status: 'completed',
         category: 'Design',
+        parentTaskId: undefined,
+        taskSequence: undefined,
+        totalTaskHours: undefined,
+        isPaused: false,
+      },
+      {
+        id: '3',
+        employeeId: '1',
+        projectId: '1',
+        taskId: '2', // ID задачи "Интеграция с внешними сервисами"
+        date: today.toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        task: 'Интеграция с внешними сервисами (из задачи проекта)',
+        plannedHours: 8,
+        actualHours: 0,
+        status: 'planned',
+        category: 'Development',
         parentTaskId: undefined,
         taskSequence: undefined,
         totalTaskHours: undefined,
@@ -80,6 +100,7 @@ export const useTimeSlots = () => {
         id: dbSlot.id,
         employeeId: dbSlot.employee_id,
         projectId: dbSlot.project_id,
+        taskId: dbSlot.task_id,
         date: dbSlot.date,
         startTime: dbSlot.start_time,
         endTime: dbSlot.end_time,
@@ -132,6 +153,7 @@ export const useTimeSlots = () => {
         .insert({
           employee_id: slot.employeeId,
           project_id: slot.projectId,
+          task_id: slot.taskId,
           date: slot.date,
           start_time: slot.startTime,
           end_time: slot.endTime,
@@ -179,6 +201,7 @@ export const useTimeSlots = () => {
         .update({
           employee_id: updates.employeeId,
           project_id: updates.projectId,
+          task_id: updates.taskId,
           date: updates.date,
           start_time: updates.startTime,
           end_time: updates.endTime,
@@ -319,6 +342,45 @@ export const useTimeSlots = () => {
     };
   };
 
+  // Convert approved bookings to time slots
+  const convertBookingsToTimeSlots = (bookings: Booking[]): TimeSlot[] => {
+    return bookings
+      .filter(booking => booking.status === 'approved')
+      .map(booking => ({
+        id: `booking-${booking.id}`,
+        employeeId: booking.employeeId,
+        projectId: booking.projectId,
+        taskId: undefined, // Бронирования не связаны с задачами напрямую
+        date: booking.date,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        task: `[БРОНИРОВАНИЕ] ${booking.taskDescription}`,
+        plannedHours: booking.durationHours,
+        actualHours: 0,
+        status: 'planned' as const,
+        category: 'Бронирование',
+        parentTaskId: undefined,
+        taskSequence: undefined,
+        totalTaskHours: undefined,
+        isPaused: false,
+        pausedAt: undefined,
+        resumedAt: undefined,
+        isRecurring: false,
+        recurrenceType: undefined,
+        recurrenceInterval: undefined,
+        recurrenceEndDate: undefined,
+        recurrenceDays: undefined,
+        parentRecurringId: undefined,
+        recurrenceCount: undefined,
+      }));
+  };
+
+  // Get all time slots including converted bookings
+  const getAllTimeSlots = (bookings: Booking[]): TimeSlot[] => {
+    const bookingTimeSlots = convertBookingsToTimeSlots(bookings);
+    return [...timeSlots, ...bookingTimeSlots];
+  };
+
   return {
     timeSlots,
     addTimeSlot,
@@ -330,5 +392,7 @@ export const useTimeSlots = () => {
     getSlotsByProject,
     getProjectWeeklyReport,
     addRecurringTimeSlot,
+    convertBookingsToTimeSlots,
+    getAllTimeSlots,
   };
 };
