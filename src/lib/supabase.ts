@@ -147,6 +147,10 @@ export interface Database {
           recurrence_days?: string[];
           parent_recurring_id?: string;
           recurrence_count?: number;
+          deadline?: string;
+          deadline_type?: 'soft' | 'hard';
+          is_assigned_by_admin?: boolean;
+          deadline_reason?: string;
         };
         Insert: {
           id?: string;
@@ -174,6 +178,10 @@ export interface Database {
           recurrence_days?: string[];
           parent_recurring_id?: string;
           recurrence_count?: number;
+          deadline?: string;
+          deadline_type?: 'soft' | 'hard';
+          is_assigned_by_admin?: boolean;
+          deadline_reason?: string;
         };
         Update: {
           id?: string;
@@ -201,6 +209,10 @@ export interface Database {
           recurrence_days?: string[];
           parent_recurring_id?: string;
           recurrence_count?: number;
+          deadline?: string;
+          deadline_type?: 'soft' | 'hard';
+          is_assigned_by_admin?: boolean;
+          deadline_reason?: string;
         };
       };
       tasks: {
@@ -253,6 +265,10 @@ export interface Database {
           allocated_hours: number;
           actual_hours: number;
           created_at: string;
+          deadline?: string;
+          deadline_type?: 'soft' | 'hard';
+          deadline_reason?: string;
+          priority?: 'low' | 'medium' | 'high' | 'urgent';
         };
         Insert: {
           id?: string;
@@ -261,6 +277,10 @@ export interface Database {
           allocated_hours: number;
           actual_hours?: number;
           created_at?: string;
+          deadline?: string;
+          deadline_type?: 'soft' | 'hard';
+          deadline_reason?: string;
+          priority?: 'low' | 'medium' | 'high' | 'urgent';
         };
         Update: {
           id?: string;
@@ -269,6 +289,10 @@ export interface Database {
           allocated_hours?: number;
           actual_hours?: number;
           created_at?: string;
+          deadline?: string;
+          deadline_type?: 'soft' | 'hard';
+          deadline_reason?: string;
+          priority?: 'low' | 'medium' | 'high' | 'urgent';
         };
       };
       task_categories: {

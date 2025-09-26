@@ -122,6 +122,11 @@ export const useTimeSlots = () => {
         recurrenceDays: dbSlot.recurrence_days,
         parentRecurringId: dbSlot.parent_recurring_id,
         recurrenceCount: dbSlot.recurrence_count,
+        // Поля для дедлайнов
+        deadline: dbSlot.deadline,
+        deadlineType: dbSlot.deadline_type,
+        isAssignedByAdmin: dbSlot.is_assigned_by_admin,
+        deadlineReason: dbSlot.deadline_reason,
       }));
 
       console.log('Formatted time slots:', formattedSlots);
@@ -175,6 +180,11 @@ export const useTimeSlots = () => {
           recurrence_days: slot.recurrenceDays,
           parent_recurring_id: slot.parentRecurringId,
           recurrence_count: slot.recurrenceCount,
+          // Поля для дедлайнов
+          deadline: slot.deadline,
+          deadline_type: slot.deadlineType,
+          is_assigned_by_admin: slot.isAssignedByAdmin,
+          deadline_reason: slot.deadlineReason,
         });
 
       if (error) throw error;
@@ -223,6 +233,11 @@ export const useTimeSlots = () => {
           recurrence_days: updates.recurrenceDays,
           parent_recurring_id: updates.parentRecurringId,
           recurrence_count: updates.recurrenceCount,
+          // Поля для дедлайнов
+          deadline: updates.deadline,
+          deadline_type: updates.deadlineType,
+          is_assigned_by_admin: updates.isAssignedByAdmin,
+          deadline_reason: updates.deadlineReason,
         })
         .eq('id', id);
 

@@ -3,7 +3,7 @@ import { LogIn } from 'lucide-react';
 import { hasSupabaseCredentials } from '../lib/supabase';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<boolean>;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -11,17 +11,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = onLogin(email, password);
+    const success = await onLogin(email, password);
     if (!success) {
       setError('Неверный email или пароль');
     }
   };
 
-  const quickLogin = (userEmail: string) => {
+  const quickLogin = async (userEmail: string) => {
     setEmail(userEmail);
-    onLogin(userEmail, 'password');
+    await onLogin(userEmail, 'password');
   };
 
   return (

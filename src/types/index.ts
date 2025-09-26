@@ -51,6 +51,11 @@ export interface TimeSlot {
   recurrenceDays?: string[]; // Дни недели для еженедельного повторения
   parentRecurringId?: string; // ID родительской повторяющейся задачи
   recurrenceCount?: number; // Максимальное количество повторений
+  // Поля для дедлайнов
+  deadline?: string; // Дедлайн задачи (ISO дата)
+  deadlineType?: 'soft' | 'hard'; // Тип дедлайна: мягкий (можно превышать) или жесткий
+  isAssignedByAdmin?: boolean; // Назначена ли задача администратором
+  deadlineReason?: string; // Обоснование дедлайна
 }
 
 export interface TaskCategory {
@@ -170,4 +175,9 @@ export interface TaskAssignment {
   allocatedHours: number;
   actualHours: number;
   createdAt: string;
+  // Поля для дедлайнов (перенесены из Task)
+  deadline?: string; // Дедлайн для этого назначения
+  deadlineType?: 'soft' | 'hard'; // Тип дедлайна
+  deadlineReason?: string; // Обоснование дедлайна
+  priority?: 'low' | 'medium' | 'high' | 'urgent'; // Приоритет для этого назначения
 }

@@ -7,6 +7,7 @@ import { useBookings } from './hooks/useBookings';
 import { useLeaveRequests } from './hooks/useLeaveRequests';
 import { useTasks } from './hooks/useTasks';
 import { useTaskCategories } from './hooks/useTaskCategories';
+import { DeadlineNotifications } from './components/DeadlineNotifications';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
 import { EmployeeManagement } from './components/EmployeeManagement';
@@ -918,6 +919,13 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Уведомления о дедлайнах */}
+      <DeadlineNotifications 
+        tasks={tasks} 
+        timeSlots={timeSlots}
+        taskAssignments={taskAssignments}
+      />
 
       {/* Уведомления */}
       {notification && (

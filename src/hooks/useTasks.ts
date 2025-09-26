@@ -167,6 +167,11 @@ export const useTasks = () => {
         allocatedHours: dbAssignment.allocated_hours,
         actualHours: dbAssignment.actual_hours,
         createdAt: dbAssignment.created_at,
+        // Поля для дедлайнов
+        deadline: dbAssignment.deadline,
+        deadlineType: dbAssignment.deadline_type,
+        deadlineReason: dbAssignment.deadline_reason,
+        priority: dbAssignment.priority,
       }));
 
       setTaskAssignments(formattedAssignments);
@@ -195,7 +200,7 @@ export const useTasks = () => {
         .from('tasks')
         .insert({
           project_id: task.projectId,
-          category_id: task.categoryId,
+          category_id: task.categoryId || null,
           name: task.name,
           description: task.description,
           planned_hours: task.plannedHours,
@@ -229,7 +234,7 @@ export const useTasks = () => {
       const { error } = await supabase
         .from('tasks')
         .update({
-          category_id: updates.categoryId,
+          category_id: updates.categoryId || null,
           name: updates.name,
           description: updates.description,
           planned_hours: updates.plannedHours,
@@ -271,7 +276,15 @@ export const useTasks = () => {
     }
   };
 
-  const assignTaskToEmployee = async (taskId: string, employeeId: string, allocatedHours: number) => {
+  const assignTaskToEmployee = async (
+    taskId: string, 
+    employeeId: string, 
+    allocatedHours: number,
+    deadline?: string,
+    deadlineType: 'soft' | 'hard' = 'soft',
+    deadlineReason?: string,
+    priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'
+  ) => {
     if (!supabase) {
       // Demo mode
       const newAssignment: TaskAssignment = {
@@ -281,6 +294,10 @@ export const useTasks = () => {
         allocatedHours,
         actualHours: 0,
         createdAt: new Date().toISOString(),
+        deadline,
+        deadlineType,
+        deadlineReason,
+        priority,
       };
       setTaskAssignments(prev => [...prev, newAssignment]);
       return newAssignment;
@@ -293,6 +310,10 @@ export const useTasks = () => {
           task_id: taskId,
           employee_id: employeeId,
           allocated_hours: allocatedHours,
+          deadline,
+          deadline_type: deadlineType,
+          deadline_reason: deadlineReason,
+          priority,
         })
         .select()
         .single();
@@ -322,6 +343,10 @@ export const useTasks = () => {
         .update({
           allocated_hours: updates.allocatedHours,
           actual_hours: updates.actualHours,
+          deadline: updates.deadline,
+          deadline_type: updates.deadlineType,
+          deadline_reason: updates.deadlineReason,
+          priority: updates.priority,
         })
         .eq('id', id);
 

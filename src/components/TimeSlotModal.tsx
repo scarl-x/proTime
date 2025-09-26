@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Clock, User, Tag, Calendar, Split, Pause, Play, AlertCircle, Repeat, Info } from 'lucide-react';
 import { TimeSlot, User as UserType, Project, TaskCategory } from '../types';
 import { RecurringTaskConfig, generateRecurringTasks, getRecurrenceDescription, WEEKDAY_NAMES } from '../utils/recurringUtils';
+import { canExceedPlannedHoursForSlot, isDeadlinePassed } from '../utils/deadlineUtils';
 
 interface TimeSlotModalProps {
   isOpen: boolean;
@@ -64,6 +65,11 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     recurrenceDays: undefined as string[] | undefined,
     parentRecurringId: undefined as string | undefined,
     recurrenceCount: undefined as number | undefined,
+    // Поля для дедлайнов
+    deadline: undefined as string | undefined,
+    deadlineType: 'soft' as 'soft' | 'hard',
+    isAssignedByAdmin: false,
+    deadlineReason: undefined as string | undefined,
   });
   const [showSplitOptions, setShowSplitOptions] = useState(false);
   const [splitDays, setSplitDays] = useState(1);
@@ -102,6 +108,11 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         recurrenceDays: slot.recurrenceDays,
         parentRecurringId: slot.parentRecurringId,
         recurrenceCount: slot.recurrenceCount,
+        // Поля для дедлайнов
+        deadline: slot.deadline,
+        deadlineType: slot.deadlineType || 'soft',
+        isAssignedByAdmin: slot.isAssignedByAdmin || false,
+        deadlineReason: slot.deadlineReason,
       });
 
       // Если это часть разбитой задачи, загружаем все части для редактирования
@@ -369,14 +380,34 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
 
     const originalHours = getOriginalPlannedHours();
     
+    // Проверяем, можно ли превышать плановые часы (учитывая дедлайн)
+    const canExceed = canExceedPlannedHoursForSlot({
+      ...formData,
+      id: slot?.id || '',
+      employeeId: formData.employeeId,
+      projectId: formData.projectId,
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      task: formData.task,
+      plannedHours: formData.plannedHours,
+      actualHours: formData.actualHours,
+      status: formData.status,
+      category: formData.category,
+      deadline: formData.deadline,
+      deadlineType: formData.deadlineType,
+      isAssignedByAdmin: formData.isAssignedByAdmin,
+      deadlineReason: formData.deadlineReason,
+    } as TimeSlot);
+    
     // Для разбитых задач
     if (slot?.parentTaskId) {
       // Если редактируем все части сразу
       if (isEditingSplitTask) {
         const totalPlannedHours = splitHoursPerDay.reduce((sum, hours) => sum + hours, 0);
-        if (Math.abs(totalPlannedHours - originalHours) > 0.1) {
+        if (Math.abs(totalPlannedHours - originalHours) > 0.1 && !canExceed) {
           setPlannedHoursError(
-            `Сумма плановых часов всех частей задачи (${totalPlannedHours}ч) должна равняться ${originalHours}ч, установленным администратором`
+            `Сумма плановых часов всех частей задачи (${totalPlannedHours}ч) должна равняться ${originalHours}ч, установленным администратором. ${!canExceed && formData.deadline ? 'Превышение возможно только после дедлайна.' : ''}`
           );
           return false;
         }
@@ -388,9 +419,9 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         
         const totalPlannedHours = siblingTasks.reduce((sum, task) => sum + task.plannedHours, 0) + formData.plannedHours;
         
-        if (Math.abs(totalPlannedHours - originalHours) > 0.1) {
+        if (Math.abs(totalPlannedHours - originalHours) > 0.1 && !canExceed) {
           setPlannedHoursError(
-            `Сумма плановых часов всех частей задачи (${totalPlannedHours}ч) должна равняться ${originalHours}ч, установленным администратором`
+            `Сумма плановых часов всех частей задачи (${totalPlannedHours}ч) должна равняться ${originalHours}ч, установленным администратором. ${!canExceed && formData.deadline ? 'Превышение возможно только после дедлайна.' : ''}`
           );
           return false;
         }
@@ -399,9 +430,9 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     
     // Для обычных задач, назначенных админом
     if (slot && !slot.parentTaskId && isTaskAssignedByAdmin()) {
-      if (Math.abs(formData.plannedHours - originalHours) > 0.1) {
+      if (Math.abs(formData.plannedHours - originalHours) > 0.1 && !canExceed) {
         setPlannedHoursError(
-          `Плановые часы (${formData.plannedHours}ч) не могут отличаться от установленных администратором (${originalHours}ч)`
+          `Плановые часы (${formData.plannedHours}ч) не могут отличаться от установленных администратором (${originalHours}ч). ${!canExceed && formData.deadline ? 'Превышение возможно только после дедлайна.' : ''}`
         );
         return false;
       }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Clock, FileText, Tag, Zap } from 'lucide-react';
+import { X, DollarSign, Clock, FileText, Tag } from 'lucide-react';
 import { Task, TaskCategory } from '../../types';
 
 interface TaskModalProps {
@@ -234,6 +234,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </select>
               </div>
 
+
               {/* Total Cost (calculated) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -247,6 +248,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </p>
               </div>
             </div>
+
 
             {/* Cost Breakdown */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
