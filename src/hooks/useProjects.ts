@@ -49,9 +49,8 @@ export const useProjects = () => {
       },
     ];
     setProjects(demoProjects);
-    if (demoProjects.length > 0) {
-      setCurrentProject(demoProjects[0]);
-    }
+    // По умолчанию показываем все проекты
+    setCurrentProject(null);
   };
 
   const loadProjects = async () => {
@@ -85,9 +84,12 @@ export const useProjects = () => {
       console.log('Formatted projects:', formattedProjects);
       setProjects(formattedProjects);
       
-      if (formattedProjects.length > 0 && !currentProject) {
-        setCurrentProject(formattedProjects[0]);
-      } else if (formattedProjects.length === 0) {
+      // По умолчанию показываем все проекты
+      if (!currentProject) {
+        setCurrentProject(null);
+      }
+      
+      if (formattedProjects.length === 0) {
         console.log('No projects found, creating demo projects...');
         await createDemoProjectsInSupabase();
       }

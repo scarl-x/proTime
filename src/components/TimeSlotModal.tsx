@@ -169,13 +169,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Для дейликов автоматически устанавливаем фактические часы равными плановым
-    const isStandup = formData.task === 'Ежедневный дейлик команды';
-    const finalFormData = isStandup ? {
-      ...formData,
-      actualHours: formData.plannedHours,
-      status: 'completed'
-    } : formData;
+    const finalFormData = formData;
     
     // Проверяем ограничения для задач, назначенных админом
     if (isTaskAssignedByAdmin() && currentUser.role === 'employee') {

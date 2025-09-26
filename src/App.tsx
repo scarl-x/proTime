@@ -7,7 +7,6 @@ import { useBookings } from './hooks/useBookings';
 import { useLeaveRequests } from './hooks/useLeaveRequests';
 import { useTasks } from './hooks/useTasks';
 import { useTaskCategories } from './hooks/useTaskCategories';
-import { useDailyStandups } from './hooks/useDailyStandups';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
 import { EmployeeManagement } from './components/EmployeeManagement';
@@ -15,7 +14,6 @@ import { ProjectManagement } from './components/ProjectManagement';
 import { TaskList } from './components/TaskManagement/TaskList';
 import { TaskModal } from './components/TaskManagement/TaskModal';
 import { TaskCategoryManagement } from './components/TaskManagement/TaskCategoryManagement';
-import { DailyStandupSettings } from './components/Settings/DailyStandupSettings';
 import { TaskDetailView } from './components/TaskManagement/TaskDetailView';
 import { ProjectSelector } from './components/ProjectSelector';
 import { BookingModal } from './components/BookingSystem/BookingModal';
@@ -31,6 +29,7 @@ import { WeekView } from './components/Calendar/WeekView';
 import { MonthView } from './components/Calendar/MonthView';
 import { TimeSlotModal } from './components/TimeSlotModal';
 import { WeeklyReport } from './components/Reports/WeeklyReport';
+import { DailyStandupSettings } from './components/Settings/DailyStandupSettings';
 import { ProjectAnalytics } from './components/Reports/ProjectAnalytics';
 import { EmployeeList } from './components/EmployeeList';
 import { EmployeeDaySchedule } from './components/EmployeeSchedule/EmployeeDaySchedule';
@@ -113,13 +112,7 @@ function App() {
     getActiveCategories,
   } = useTaskCategories();
 
-  const {
-    configs: standupConfigs,
-    getProjectConfig,
-    updateConfig: updateStandupConfig,
-    initializeDailyStandups,
-    getStandupStats,
-  } = useDailyStandups(allUsers, projects, getAllTimeSlots(bookings), addTimeSlot);
+  // Удалено: логика дейликов
 
   const [activeTab, setActiveTab] = useState('calendar');
   const [calendarView, setCalendarView] = useState<CalendarView>('week');
@@ -141,6 +134,14 @@ function App() {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const [viewingEmployeeSchedule, setViewingEmployeeSchedule] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  // Экран настроек дейликов находится в отдельном компоненте
 
   if (isLoading) {
     return (
@@ -304,6 +305,18 @@ function App() {
       console.error('Error creating booking:', error);
       alert('Ошибка при создании бронирования');
     }
+  };
+
+  const renderSettingsTab = () => {
+    return (
+      <div className="p-4 sm:p-6">
+        <DailyStandupSettings 
+          projects={projects} 
+          employees={allUsers}
+          onNotify={(type, message) => showNotification(type, message)}
+        />
+      </div>
+    );
   };
 
   const handleUpdateBooking = async (id: string, updates: any) => {
@@ -633,16 +646,7 @@ function App() {
         );
 
       case 'daily-standups':
-        return (
-          <DailyStandupSettings
-            configs={standupConfigs}
-            projects={projects}
-            getProjectConfig={getProjectConfig}
-            onUpdateConfig={updateStandupConfig}
-            onInitializeStandups={initializeDailyStandups}
-            standupStats={getStandupStats()}
-          />
-        );
+        return renderSettingsTab();
 
       case 'reports':
         return (
@@ -911,6 +915,30 @@ function App() {
                 {u.name} ({u.role})
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Уведомления */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+          notification.type === 'success' ? 'bg-green-100 border border-green-400 text-green-800' :
+          notification.type === 'error' ? 'bg-red-100 border border-red-400 text-red-800' :
+          'bg-blue-100 border border-blue-400 text-blue-800'
+        }`}>
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${
+              notification.type === 'success' ? 'bg-green-500' :
+              notification.type === 'error' ? 'bg-red-500' :
+              'bg-blue-500'
+            }`} />
+            <span className="text-sm font-medium">{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-2 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
