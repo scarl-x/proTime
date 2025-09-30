@@ -138,6 +138,8 @@ export interface LeaveRequest {
   approvedBy?: string;
   approvedAt?: string;
   notes?: string;
+  // Для отгулов: признак, что отгул отработан
+  worked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -4,6 +4,7 @@ import { TimeSlot } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 import { getCalendarSlotClasses } from '../../utils/calendarStyles';
 import { getRecurrenceDescription } from '../../utils/recurringUtils';
+import { getDeadlineStatus } from '../../utils/deadlineUtils';
 
 interface DayViewProps {
   date: string;
@@ -77,6 +78,16 @@ export const DayView: React.FC<DayViewProps> = ({
                 {slot.startTime} - {slot.endTime}
               </div>
               {slot.deadline && (
+                <div className="text-[10px] sm:text-xs mt-1 flex items-center space-x-1">
+                  {slot.deadlineType === 'hard' && <span className="inline-block px-1 border border-red-400 text-red-600 rounded">HARD</span>}
+                  {(() => {
+                    const st = getDeadlineStatus(slot.deadline, slot.deadlineType);
+                    const isSoon = st.status === 'approaching';
+                    return isSoon ? <span className="inline-block px-1 bg-orange-100 text-orange-700 rounded">Скоро дедлайн</span> : null;
+                  })()}
+                </div>
+              )}
+              {slot.deadline && (
                 <div className={`text-[10px] sm:text-xs mt-1 ${new Date(slot.deadline) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
                   Дедлайн: {formatDate(slot.deadline)}{slot.deadlineType ? ` (${slot.deadlineType === 'hard' ? 'жёсткий' : 'мягкий'})` : ''}
                 </div>
@@ -103,14 +114,12 @@ export const DayView: React.FC<DayViewProps> = ({
                 </div>
               )}
               <div className="text-xs mt-2">
-                {slot.actualHours > 0 ? (
-                  <div className="flex flex-col sm:flex-row sm:justify-between space-y-1 sm:space-y-0">
-                    <span>Факт: {slot.actualHours}ч</span>
-                    <span>План: {slot.plannedHours}ч</span>
-                  </div>
-                ) : (
-                  <span>Планируется: {slot.plannedHours}ч</span>
-                )}
+                <div className="flex flex-col sm:flex-row sm:justify-between space-y-1 sm:space-y-0">
+                  <span className={slot.actualHours > 0 ? '' : 'text-red-600 font-medium'}>
+                    {slot.actualHours > 0 ? `Факт: ${slot.actualHours}ч` : 'Факт: не проставлен'}
+                  </span>
+                  <span>План: {slot.plannedHours}ч</span>
+                </div>
                 {slot.isPaused && (
                   <div className="text-yellow-700 font-medium text-xs">ПАУЗА</div>
                 )}

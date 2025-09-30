@@ -79,6 +79,25 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
     return Array.from(map.entries()).map(([projectId, v]) => ({ projectId, ...v, sla: v.withDeadline > 0 ? Math.round((v.ok / v.withDeadline) * 100) : 100 }));
   }, [filtered]);
 
+  const weeklyTrend = useMemo(() => {
+    // строим недельные суммы план/факт за период для мини-графиков
+    const map: Record<string, { planned: number; actual: number }> = {};
+    for (const s of filtered) {
+      const d = new Date(s.date);
+      const monday = new Date(d);
+      const day = monday.getDay();
+      monday.setDate(monday.getDate() - day + (day === 0 ? -6 : 1));
+      const key = monday.toISOString().split('T')[0];
+      if (!map[key]) map[key] = { planned: 0, actual: 0 };
+      map[key].planned += s.plannedHours;
+      map[key].actual += s.actualHours;
+    }
+    return Object.entries(map)
+      .map(([week, v]) => ({ week, ...v }))
+      .sort((a, b) => a.week.localeCompare(b.week))
+      .slice(-8);
+  }, [filtered]);
+
   const byDepartment = useMemo(() => {
     const employeeById = Object.fromEntries(employees.map(e => [e.id, e]));
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -137,6 +156,28 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
           <div className="text-xs text-amber-700">SLA дедлайнов</div>
           <div className="text-xl font-semibold text-amber-900">{kpis.sla}%</div>
           <div className="mt-1 text-[11px] text-amber-700">hard: {kpis.hardSla}% • soft: {kpis.softSla}%</div>
+        </div>
+      </div>
+
+      {/* Мини-тренды по неделям */}
+      <div className="p-4">
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">Динамика (8 недель)</h4>
+        <div className="flex items-end space-x-1 h-16">
+          {weeklyTrend.map(item => {
+            const max = Math.max(...weeklyTrend.map(x => Math.max(x.planned, x.actual)), 1);
+            const plannedH = Math.round((item.planned / max) * 60);
+            const actualH = Math.round((item.actual / max) * 60);
+            return (
+              <div key={item.week} className="flex flex-col justify-end items-center w-6">
+                <div className="w-2 bg-blue-300" style={{ height: `${plannedH}px` }} />
+                <div className="w-2 bg-green-500 mt-0.5" style={{ height: `${actualH}px` }} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center space-x-4 mt-2 text-xs text-gray-600">
+          <div className="flex items-center space-x-1"><span className="inline-block w-2 h-2 bg-blue-300" /> <span>План</span></div>
+          <div className="flex items-center space-x-1"><span className="inline-block w-2 h-2 bg-green-500" /> <span>Факт</span></div>
         </div>
       </div>
 

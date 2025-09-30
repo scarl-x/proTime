@@ -72,6 +72,7 @@ export const useLeaveRequests = () => {
         approvedBy: dbRequest.approved_by,
         approvedAt: dbRequest.approved_at,
         notes: dbRequest.notes,
+        worked: dbRequest.worked,
         createdAt: dbRequest.created_at,
         updatedAt: dbRequest.updated_at,
       }));
@@ -110,6 +111,7 @@ export const useLeaveRequests = () => {
           approved_by: request.approvedBy,
           approved_at: request.approvedAt,
           notes: request.notes,
+          worked: request.worked || false,
         })
         .select()
         .single();
@@ -147,6 +149,7 @@ export const useLeaveRequests = () => {
           approved_by: updates.approvedBy,
           approved_at: updates.approvedAt,
           notes: updates.notes,
+          worked: updates.worked,
         })
         .eq('id', id);
 

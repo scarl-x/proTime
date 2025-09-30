@@ -225,13 +225,13 @@ function App() {
       addTimeSlot(slotData);
       
       // Если это новый слот (не редактирование) и указан проект, создаем задачу
-      if (slotData.projectId && slotData.task && !slotData.taskId) {
+      if (slotData.projectId && (slotData as any).task && !(slotData as any).taskId) {
         try {
           // Создаем задачу в проекте
           const newTask = await createTask({
             projectId: slotData.projectId,
-            name: slotData.task,
-            description: `Задача создана из календаря: ${slotData.task}`,
+            name: (slotData as any).task,
+            description: ((slotData as any).calendarDescription ? `${(slotData as any).calendarDescription}\n` : '') + `Создано из календаря` ,
             plannedHours: slotData.plannedHours,
             hourlyRate: 3500, // Стандартная ставка
             status: 'new',

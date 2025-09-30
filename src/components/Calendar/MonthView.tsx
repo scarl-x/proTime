@@ -3,7 +3,7 @@ import { Pause, Split, Repeat } from 'lucide-react';
 import { TimeSlot } from '../../types';
 import { getMonthName, formatDate } from '../../utils/dateUtils';
 import { getCalendarSlotClasses } from '../../utils/calendarStyles';
-import { isTimeSlotOverdue } from '../../utils/deadlineUtils';
+import { isTimeSlotOverdue, getDeadlineStatus } from '../../utils/deadlineUtils';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -118,6 +118,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                       {slot.deadline && (
                         <div className={`mt-0.5 text-[10px] ${isTimeSlotOverdue(slot) ? 'text-red-600' : 'text-gray-700'}`}>
                           Дедл.: {formatDate(slot.deadline)}
+                          {slot.deadlineType === 'hard' && <span className="ml-1 inline-block px-1 border border-red-400 text-red-600 rounded">HARD</span>}
+                          {(() => {
+                            const st = getDeadlineStatus(slot.deadline!, slot.deadlineType);
+                            return st.status === 'approaching' ? <span className="ml-1 inline-block px-1 bg-orange-100 text-orange-700 rounded">Скоро</span> : null;
+                          })()}
                         </div>
                       )}
                     </div>
@@ -128,10 +133,12 @@ export const MonthView: React.FC<MonthViewProps> = ({
                     </div>
                   )}
                   {stats.totalPlanned > 0 && (
-                    <div className="text-xs text-gray-600 mt-1 sm:mt-2">
-                      {stats.totalActual > 0
-                        ? `${stats.totalActual}/${stats.totalPlanned}ч`
-                        : `${stats.totalPlanned}ч`}
+                    <div className="text-xs mt-1 sm:mt-2">
+                      {stats.totalActual > 0 ? (
+                        <span className="text-gray-600">{`${stats.totalActual}/${stats.totalPlanned}ч`}</span>
+                      ) : (
+                        <span className="text-red-600 font-medium">Факт: не проставлен</span>
+                      )}
                     </div>
                   )}
                 </div>

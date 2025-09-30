@@ -292,6 +292,16 @@ export const LeaveRequestsList: React.FC<LeaveRequestsListProps> = ({
 
                     {canManageRequest(request) && (
                       <>
+                        {request.type === 'compensatory_leave' && request.status === 'approved' && (
+                          <label className="flex items-center space-x-2 text-xs text-gray-700 mr-2">
+                            <input
+                              type="checkbox"
+                              checked={!!request.worked}
+                              onChange={(e) => onUpdateRequest(request.id, { worked: e.target.checked })}
+                            />
+                            <span>Отработан</span>
+                          </label>
+                        )}
                         <button
                           onClick={() => onEditRequest(request)}
                           className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"

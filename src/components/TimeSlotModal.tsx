@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Clock, User, Tag, Calendar, Split, Pause, Play, AlertCircle, Repeat, Info } from 'lucide-react';
 import { TimeSlot, User as UserType, Project, TaskCategory } from '../types';
 import { RecurringTaskConfig, generateRecurringTasks, getRecurrenceDescription, WEEKDAY_NAMES } from '../utils/recurringUtils';
+import { formatDate } from '../utils/dateUtils';
+import { calculateAdvancedDeadline, DEFAULT_PLANNING_FACTOR } from '../utils/deadlineUtils';
 import { canExceedPlannedHoursForSlot, isDeadlinePassed } from '../utils/deadlineUtils';
 
 interface TimeSlotModalProps {
@@ -43,6 +45,13 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   preselectedTask,
   categories = [],
 }) => {
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [onClose]);
   const [formData, setFormData] = useState({
     employeeId: currentUser.id,
     projectId: '',
@@ -50,10 +59,12 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     startTime: '09:00',
     endTime: '17:00',
     task: '',
+    taskTitle: '',
+    taskDescription: '',
     plannedHours: 8,
     actualHours: 0,
     status: 'planned' as 'planned' | 'in-progress' | 'completed',
-    category: 'Разработка',
+    category: '',
     parentTaskId: undefined as string | undefined,
     taskSequence: undefined as number | undefined,
     totalTaskHours: undefined as number | undefined,
@@ -80,6 +91,8 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     interval: 1,
     weekDays: [1, 2, 3, 4, 5], // Пн-Пт по умолчанию
   });
+  const WORKING_DAYS = [1, 2, 3, 4, 5];
+  const WORKING_HOURS_PER_DAY = 8;
   const [plannedHoursError, setPlannedHoursError] = useState<string>('');
   const [isEditingSplitTask, setIsEditingSplitTask] = useState(false);
   const [splitTaskParts, setSplitTaskParts] = useState<TimeSlot[]>([]);
@@ -93,6 +106,8 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         startTime: slot.startTime,
         endTime: slot.endTime,
         task: slot.task,
+        taskTitle: slot.task,
+        taskDescription: '',
         plannedHours: slot.plannedHours,
         actualHours: slot.actualHours,
         status: slot.status,
@@ -123,17 +138,29 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       }
     } else if (preselectedTask) {
       // Если передана предустановленная задача из backlog
+      const baseDate = new Date().toISOString().split('T')[0];
+      const planned = 8;
+      const dl = calculateAdvancedDeadline({
+        startDate: baseDate,
+        totalHours: planned,
+        workingHoursPerDay: WORKING_HOURS_PER_DAY,
+        workingDays: WORKING_DAYS,
+        planningFactor: DEFAULT_PLANNING_FACTOR,
+        priority: 'medium',
+      });
       setFormData({
         employeeId: currentUser.id,
         projectId: preselectedTask.projectId,
-        date: new Date().toISOString().split('T')[0],
+        date: baseDate,
         startTime: '09:00',
         endTime: '17:00',
         task: preselectedTask.title,
-        plannedHours: 8,
+        taskTitle: preselectedTask.title,
+        taskDescription: preselectedTask.description || '',
+        plannedHours: planned,
         actualHours: 0,
         status: 'planned' as 'planned' | 'in-progress' | 'completed',
-        category: 'Разработка',
+        category: '',
         parentTaskId: undefined,
         taskSequence: undefined,
         totalTaskHours: undefined,
@@ -145,21 +172,39 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         recurrenceDays: undefined,
         parentRecurringId: undefined,
         recurrenceCount: undefined,
+        deadline: undefined,
+        deadlineType: 'soft',
+        isAssignedByAdmin: false,
+        deadlineReason: undefined,
       });
+      setFormData(prev => ({ ...prev, deadline: dl.deadline }));
       setIsEditingSplitTask(false);
       setSplitTaskParts([]);
     } else {
+      // Новый слот: сразу вычисляем дедлайн на сегодняшнюю дату
+      const baseDate = new Date().toISOString().split('T')[0];
+      const planned = 8;
+      const dl = calculateAdvancedDeadline({
+        startDate: baseDate,
+        totalHours: planned,
+        workingHoursPerDay: WORKING_HOURS_PER_DAY,
+        workingDays: WORKING_DAYS,
+        planningFactor: DEFAULT_PLANNING_FACTOR,
+        priority: 'medium',
+      });
       setFormData({
         employeeId: currentUser.id,
         projectId: projects[0]?.id || '',
-        date: new Date().toISOString().split('T')[0],
+        date: baseDate,
         startTime: '09:00',
         endTime: '17:00',
         task: '',
-        plannedHours: 8,
+        taskTitle: '',
+        taskDescription: '',
+        plannedHours: planned,
         actualHours: 0,
         status: 'planned' as 'planned' | 'in-progress' | 'completed',
-        category: 'Разработка',
+        category: '',
         parentTaskId: undefined,
         taskSequence: undefined,
         totalTaskHours: undefined,
@@ -171,7 +216,12 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         recurrenceDays: undefined,
         parentRecurringId: undefined,
         recurrenceCount: undefined,
+        deadline: undefined,
+        deadlineType: 'soft',
+        isAssignedByAdmin: false,
+        deadlineReason: undefined,
       });
+      setFormData(prev => ({ ...prev, deadline: dl.deadline }));
       setIsEditingSplitTask(false);
       setSplitTaskParts([]);
     }
@@ -180,7 +230,12 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const finalFormData = formData;
+    const finalFormData = {
+      ...formData,
+      task: formData.taskTitle || formData.task || '',
+      // Пробрасываем описание для создания связанной задачи в проекте
+      calendarDescription: formData.taskDescription,
+    } as any;
     
     // Проверяем ограничения для задач, назначенных админом
     if (isTaskAssignedByAdmin() && currentUser.role === 'employee') {
@@ -229,6 +284,25 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       }
     }
   };
+
+  // Автоматический расчёт дедлайна для новых/редактируемых задач при изменении даты/часов
+  useEffect(() => {
+    const totalHours = formData.plannedHours || calculateHours();
+    const startDate = formData.date;
+    if (!startDate || totalHours <= 0) return;
+    // Для новых задач всегда пересчитываем; для существующих — при изменении даты
+    if (!slot || (slot && slot.date !== formData.date)) {
+      const result = calculateAdvancedDeadline({
+        startDate,
+        totalHours,
+        workingHoursPerDay: WORKING_HOURS_PER_DAY,
+        workingDays: WORKING_DAYS,
+        planningFactor: DEFAULT_PLANNING_FACTOR,
+        priority: 'medium',
+      });
+      setFormData(prev => ({ ...prev, deadline: result.deadline, deadlineType: prev.deadlineType || 'soft' }));
+    }
+  }, [formData.date, formData.plannedHours, formData.startTime, formData.endTime, slot]);
 
   const handleSplitTask = () => {
     const parentTaskId = crypto.randomUUID();
@@ -471,7 +545,12 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   const canEditPlannedHours = currentUser.role === 'admin' || !isTaskAssignedByAdmin();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
@@ -757,17 +836,18 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 />
               </div>
 
-              {/* Category */}
+              {/* Category (optional) */}
               <div>
                 <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
                   <Tag className="h-4 w-4" />
-                  <span>Категория</span>
+                  <span>Категория (необязательно)</span>
                 </label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
+                  <option value="">Без категории</option>
                   {categories.length > 0 ? (
                     categories.map((cat) => (
                       <option key={cat.id} value={cat.name}>
@@ -802,20 +882,45 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
             </div>
           )}
 
-          {/* Task - только для обычных задач */}
+          {/* Task title/description - только для обычных задач */}
           {!isEditingSplitTask && (
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Задача
-              </label>
-              <textarea
-                value={formData.task}
-                onChange={(e) => setFormData({ ...formData, task: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Описание задачи..."
-                required
-              />
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Название задачи
+                </label>
+                <input
+                  type="text"
+                  value={formData.taskTitle}
+                  onChange={(e) => setFormData({ ...formData, taskTitle: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Например: Разработка формы логина"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Описание (необязательно)
+                </label>
+                <textarea
+                  value={formData.taskDescription}
+                  onChange={(e) => setFormData({ ...formData, taskDescription: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Кратко опишите задачу..."
+                />
+              </div>
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded">
+                <div className="text-sm text-gray-700">
+                  Дедлайн: <span className="font-medium">{formData.deadline ? formatDate(formData.deadline) : '—'}</span>
+                  {formData.deadlineType && (
+                    <span className="ml-2 text-xs text-gray-600">({formData.deadlineType === 'hard' ? 'жёсткий' : 'мягкий'})</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Дедлайн устанавливается на уровне задачи/назначения и рассчитывается автоматически в отчетах.
+                </div>
+              </div>
             </div>
           )}
 

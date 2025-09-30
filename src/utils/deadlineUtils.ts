@@ -232,27 +232,34 @@ export const calculateAdvancedDeadline = (params: DeadlineCalculationParams): De
     priorityBuffers = DEFAULT_PRIORITY_BUFFERS
   } = params;
 
-  // 1. Переводим часы в рабочие дни (чистая работа)
-  const pureWorkDays = Math.ceil(totalHours / workingHoursPerDay);
-  
-  // 2. Умножаем на коэффициент планирования
-  const planningDays = Math.ceil(pureWorkDays * planningFactor);
-  
-  // 3. Добавляем буфер приоритета
+  // 1) Переводим часы в рабочие дни (дробные) — без округления
+  const pureWorkDaysFloat = totalHours / workingHoursPerDay;
+  // 2) Коэффициент планирования — по времени, не по дням
+  const planningDaysFloat = pureWorkDaysFloat * planningFactor;
+  // 3) Буфер приоритета (в днях)
   const bufferDays = priorityBuffers[priority];
-  const totalDays = planningDays + bufferDays;
-  
-  // 4. Рассчитываем дату дедлайна, учитывая только рабочие дни
-  const deadline = calculateDeadlineDate(startDate, totalDays, workingDays);
+  // Итоговая продолжительность в днях (дробная)
+  const totalDaysFloat = planningDaysFloat + bufferDays;
+
+  // Правило: короткие задачи (<= 1 рабочего дня) имеют дедлайн в тот же рабочий день
+  // Это особенно важно для задач на 1–2 часа
+  let deadline: string;
+  if (totalDaysFloat <= 1) {
+    deadline = new Date(startDate).toISOString().split('T')[0];
+  } else {
+    // Для больших задач округляем до целого количества рабочих дней вверх
+    const totalDays = Math.ceil(totalDaysFloat);
+    deadline = calculateDeadlineDate(startDate, totalDays, workingDays);
+  }
   
   return {
     deadline,
-    workingDaysNeeded: pureWorkDays,
-    planningDays,
+    workingDaysNeeded: Math.ceil(pureWorkDaysFloat),
+    planningDays: Math.ceil(planningDaysFloat),
     bufferDays,
-    totalDays,
+    totalDays: Math.max(1, Math.ceil(totalDaysFloat)),
     breakdown: {
-      pureWorkDays,
+      pureWorkDays: Math.ceil(pureWorkDaysFloat),
       planningFactor,
       priorityBuffer: bufferDays,
     }

@@ -9,6 +9,7 @@ interface OverdueDeadlinesReportProps {
 export const OverdueDeadlinesReport: React.FC<OverdueDeadlinesReportProps> = ({ timeSlots, employees }) => {
   const [onlyActive, setOnlyActive] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'overdueCount' | 'avgDelay' | 'totalDelay'>('overdueCount');
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const employeeById = useMemo(() => {
     const map: Record<string, User> = {};
@@ -84,6 +85,21 @@ export const OverdueDeadlinesReport: React.FC<OverdueDeadlinesReportProps> = ({ 
     return arr;
   }, [timeSlots, employees, employeeById, sortBy, onlyActive]);
 
+  const slotsByEmployee = useMemo(() => {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const map: Record<string, TimeSlot[]> = {};
+    for (const s of timeSlots) {
+      if (!s.deadline) continue;
+      const isCompleted = (s.status as any) === 'completed' || !!s.completedAt;
+      const isOverdue = new Date(s.deadline) < startOfToday && !isCompleted;
+      if (!isOverdue) continue;
+      if (!map[s.employeeId]) map[s.employeeId] = [];
+      map[s.employeeId].push(s);
+    }
+    return map;
+  }, [timeSlots]);
+
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
       <div className="p-4 border-b bg-gray-50">
@@ -126,14 +142,54 @@ export const OverdueDeadlinesReport: React.FC<OverdueDeadlinesReportProps> = ({ 
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {stats.map((row) => (
-              <tr key={row.employeeId} className="hover:bg-gray-50">
-                <td className="px-4 py-2 text-sm text-gray-900">{row.employee?.name || row.employeeId}</td>
-                <td className="px-4 py-2 text-sm text-gray-900">{row.overdueCount}</td>
-                <td className="px-4 py-2 text-sm text-gray-900">{row.hardOverdueCount}</td>
-                <td className="px-4 py-2 text-sm text-gray-900">{row.avgDelayDays}</td>
-                <td className="px-4 py-2 text-sm text-gray-900">{row.totalDelayDays}</td>
-                <td className="px-4 py-2 text-sm text-gray-900">{row.maxDelayDays}</td>
-              </tr>
+              <>
+                <tr key={row.employeeId} className="hover:bg-gray-50 cursor-pointer" onClick={() => setExpanded(expanded === row.employeeId ? null : row.employeeId)}>
+                  <td className="px-4 py-2 text-sm text-gray-900">{row.employee?.name || row.employeeId}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{row.overdueCount}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{row.hardOverdueCount}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{row.avgDelayDays}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{row.totalDelayDays}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{row.maxDelayDays}</td>
+                </tr>
+                {expanded === row.employeeId && (
+                  <tr>
+                    <td colSpan={6} className="bg-gray-50 px-4 py-2">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead>
+                            <tr className="text-xs text-gray-500">
+                              <th className="px-2 py-1 text-left">Дата</th>
+                              <th className="px-2 py-1 text-left">Проект</th>
+                              <th className="px-2 py-1 text-left">Задача</th>
+                              <th className="px-2 py-1 text-left">Дедлайн</th>
+                              <th className="px-2 py-1 text-left">Просрочка (дн)</th>
+                              <th className="px-2 py-1 text-left">Действия</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(slotsByEmployee[row.employeeId] || []).map((s) => {
+                              const days = Math.ceil((new Date().getTime() - new Date(s.deadline!).getTime()) / (1000 * 60 * 60 * 24));
+                              return (
+                                <tr key={s.id} className="text-xs">
+                                  <td className="px-2 py-1">{s.date}</td>
+                                  <td className="px-2 py-1">{s.projectId}</td>
+                                  <td className="px-2 py-1 truncate max-w-[200px]" title={s.task}>{s.task}</td>
+                                  <td className="px-2 py-1">{s.deadline}</td>
+                                  <td className="px-2 py-1">{days}</td>
+                                  <td className="px-2 py-1 space-x-2">
+                                    <button className="text-blue-600 hover:underline">Календарь</button>
+                                    <button className="text-blue-600 hover:underline">Детали</button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             ))}
             {stats.length === 0 && (
               <tr>

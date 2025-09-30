@@ -29,6 +29,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   selectedDate,
   categories = [],
 }) => {
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [onClose]);
   const [formData, setFormData] = useState({
     employeeId: selectedEmployee?.id || '',
     projectId: '',
@@ -139,7 +146,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const selectedEmployeeData = employees.find(emp => emp.id === formData.employeeId);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">

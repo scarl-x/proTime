@@ -231,6 +231,14 @@ export const LeaveBalance: React.FC<LeaveBalanceProps> = ({
                               }}
                             />
                           </div>
+                          {/* Строка состояния последнего отгула */}
+                          {leaveRequests.filter(r => r.type === 'compensatory_leave' && r.employeeId === balance.employeeId)
+                            .slice(0, 1)
+                            .map(r => (
+                              <div key={r.id} className={`mt-2 text-xs font-medium ${r.worked ? 'text-green-700' : 'text-red-700'}`}>
+                                Состояние последнего отгула: {r.worked ? 'отработан' : 'не отработан'}
+                              </div>
+                          ))}
                         </div>
 
                         {/* Sick Days */}

@@ -3,6 +3,7 @@ import { Pause, Split, Repeat } from 'lucide-react';
 import { TimeSlot } from '../../types';
 import { getWeekDates, getDayName, formatDate } from '../../utils/dateUtils';
 import { getCalendarSlotClasses } from '../../utils/calendarStyles';
+import { getDeadlineStatus } from '../../utils/deadlineUtils';
 
 interface WeekViewProps {
   weekStart: string;
@@ -97,12 +98,21 @@ export const WeekView: React.FC<WeekViewProps> = ({
                   {slot.deadline && (
                     <div className={`text-[10px] sm:text-xs mt-1 ${new Date(slot.deadline) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
                       Дедлайн: {formatDate(slot.deadline)}{slot.deadlineType ? ` (${slot.deadlineType === 'hard' ? 'жёсткий' : 'мягкий'})` : ''}
+                      <span className="ml-1">
+                        {slot.deadlineType === 'hard' && <span className="inline-block px-1 border border-red-400 text-red-600 rounded mr-1">HARD</span>}
+                        {(() => {
+                          const st = getDeadlineStatus(slot.deadline, slot.deadlineType);
+                          return st.status === 'approaching' ? <span className="inline-block px-1 bg-orange-100 text-orange-700 rounded">Скоро</span> : null;
+                        })()}
+                      </span>
                     </div>
                   )}
                   <div className="text-xs mt-1 hidden sm:block">
-                    {slot.actualHours > 0
-                      ? `${slot.actualHours}ч (план: ${slot.plannedHours}ч)`
-                      : `${slot.plannedHours}ч`}
+                    {slot.actualHours > 0 ? (
+                      `${slot.actualHours}ч (план: ${slot.plannedHours}ч)`
+                    ) : (
+                      <span className="text-red-600 font-medium">Факт: не проставлен</span>
+                    )}
                   </div>
                   {slot.isPaused && (
                     <div className="text-xs text-yellow-700 font-medium mt-1 hidden sm:block">ПАУЗА</div>
