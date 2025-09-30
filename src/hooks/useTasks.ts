@@ -134,6 +134,12 @@ export const useTasks = () => {
         totalCost: dbTask.total_cost,
         status: dbTask.status,
         createdBy: dbTask.created_by,
+        // Дедлайн-поля и завершение
+        deadline: dbTask.deadline,
+        deadlineType: dbTask.deadline_type,
+        deadlineReason: dbTask.deadline_reason,
+        completedAt: dbTask.completed_at,
+        deadlineChangeLog: dbTask.deadline_change_log || [],
         createdAt: dbTask.created_at,
         updatedAt: dbTask.updated_at,
       }));
@@ -207,6 +213,10 @@ export const useTasks = () => {
           hourly_rate: task.hourlyRate,
           status: task.status,
           created_by: task.createdBy,
+          deadline: task.deadline || null,
+          deadline_type: task.deadlineType || null,
+          deadline_reason: task.deadlineReason || null,
+          completed_at: task.completedAt || null,
         })
         .select()
         .single();
@@ -240,6 +250,10 @@ export const useTasks = () => {
           planned_hours: updates.plannedHours,
           hourly_rate: updates.hourlyRate,
           status: updates.status,
+          deadline: updates.deadline,
+          deadline_type: updates.deadlineType,
+          deadline_reason: updates.deadlineReason,
+          completed_at: updates.completedAt,
         })
         .eq('id', id);
 
