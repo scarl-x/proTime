@@ -38,7 +38,15 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
     const notOverdueNow = withDeadline.filter(s => new Date(s.deadline!) >= startOfToday || (s.status as any) === 'completed' || (s.status as any) === 'завершено');
     const sla = withDeadline.length > 0 ? Math.round((notOverdueNow.length / withDeadline.length) * 100) : 100;
 
-    return { planned, actual, efficiency, sla };
+    // SLA по типу дедлайна
+    const hard = withDeadline.filter(s => s.deadlineType === 'hard');
+    const hardOk = hard.filter(s => new Date(s.deadline!) >= startOfToday || (s.status as any) === 'completed' || (s.status as any) === 'завершено').length;
+    const hardSla = hard.length > 0 ? Math.round((hardOk / hard.length) * 100) : 100;
+    const soft = withDeadline.filter(s => s.deadlineType !== 'hard');
+    const softOk = soft.filter(s => new Date(s.deadline!) >= startOfToday || (s.status as any) === 'completed' || (s.status as any) === 'завершено').length;
+    const softSla = soft.length > 0 ? Math.round((softOk / soft.length) * 100) : 100;
+
+    return { planned, actual, efficiency, sla, hardSla, softSla };
   }, [filtered]);
 
   const byEmployee = useMemo(() => {
@@ -55,17 +63,40 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
   }, [filtered]);
 
   const byProject = useMemo(() => {
-    const map = new Map<string, { planned: number; actual: number; overdue: number }>();
+    const map = new Map<string, { planned: number; actual: number; overdue: number; withDeadline: number; ok: number }>();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     for (const s of filtered) {
-      if (!map.has(s.projectId)) map.set(s.projectId, { planned: 0, actual: 0, overdue: 0 });
+      if (!map.has(s.projectId)) map.set(s.projectId, { planned: 0, actual: 0, overdue: 0, withDeadline: 0, ok: 0 });
       const rec = map.get(s.projectId)!;
       rec.planned += s.plannedHours;
       rec.actual += s.actualHours;
       if (s.deadline && new Date(s.deadline) < startOfToday && ((s.status as any) !== 'completed' && (s.status as any) !== 'завершено')) rec.overdue += 1;
+      if (s.deadline) {
+        rec.withDeadline += 1;
+        if (new Date(s.deadline) >= startOfToday || (s.status as any) === 'completed' || (s.status as any) === 'завершено') rec.ok += 1;
+      }
     }
-    return Array.from(map.entries()).map(([projectId, v]) => ({ projectId, ...v }));
+    return Array.from(map.entries()).map(([projectId, v]) => ({ projectId, ...v, sla: v.withDeadline > 0 ? Math.round((v.ok / v.withDeadline) * 100) : 100 }));
   }, [filtered]);
+
+  const byDepartment = useMemo(() => {
+    const employeeById = Object.fromEntries(employees.map(e => [e.id, e]));
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const map = new Map<string, { planned: number; actual: number; overdue: number; withDeadline: number; ok: number }>();
+    for (const s of filtered) {
+      const dept = employeeById[s.employeeId]?.department || 'Не указан';
+      if (!map.has(dept)) map.set(dept, { planned: 0, actual: 0, overdue: 0, withDeadline: 0, ok: 0 });
+      const rec = map.get(dept)!;
+      rec.planned += s.plannedHours;
+      rec.actual += s.actualHours;
+      if (s.deadline && new Date(s.deadline) < startOfToday && ((s.status as any) !== 'completed' && (s.status as any) !== 'завершено')) rec.overdue += 1;
+      if (s.deadline) {
+        rec.withDeadline += 1;
+        if (new Date(s.deadline) >= startOfToday || (s.status as any) === 'completed' || (s.status as any) === 'завершено') rec.ok += 1;
+      }
+    }
+    return Array.from(map.entries()).map(([department, v]) => ({ department, ...v, sla: v.withDeadline > 0 ? Math.round((v.ok / v.withDeadline) * 100) : 100 }));
+  }, [filtered, employees]);
 
   const nameByEmployee = useMemo(() => Object.fromEntries(employees.map(e => [e.id, e.name])), [employees]);
   const nameByProject = useMemo(() => Object.fromEntries(projects.map(p => [p.id, p.name])), [projects]);
@@ -105,6 +136,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
         <div className="p-4 rounded-lg bg-amber-50 border border-amber-100">
           <div className="text-xs text-amber-700">SLA дедлайнов</div>
           <div className="text-xl font-semibold text-amber-900">{kpis.sla}%</div>
+          <div className="mt-1 text-[11px] text-amber-700">hard: {kpis.hardSla}% • soft: {kpis.softSla}%</div>
         </div>
       </div>
 
@@ -140,7 +172,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
         </div>
       </div>
 
-      {/* Разрез по проектам */}
+      {/* Разрез по проектам + SLA */}
       <div className="p-4">
         <h4 className="text-sm font-semibold text-gray-900 mb-2">По проектам</h4>
         <div className="overflow-x-auto">
@@ -151,6 +183,7 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">План, ч</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Факт, ч</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Просрочек</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SLA %</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -160,11 +193,46 @@ export const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ time
                   <td className="px-4 py-2 text-sm text-gray-900">{r.planned}</td>
                   <td className="px-4 py-2 text-sm text-gray-900">{r.actual}</td>
                   <td className="px-4 py-2 text-sm text-gray-900">{r.overdue}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{r.sla}%</td>
                 </tr>
               ))}
               {byProject.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-500">Нет данных</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Разрез по отделам */}
+      <div className="p-4">
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">По отделам</h4>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Отдел</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">План, ч</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Факт, ч</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Просрочек</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SLA %</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {byDepartment.map(r => (
+                <tr key={r.department} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 text-sm text-gray-900">{r.department}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{r.planned}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{r.actual}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{r.overdue}</td>
+                  <td className="px-4 py-2 text-sm text-gray-900">{r.sla}%</td>
+                </tr>
+              ))}
+              {byDepartment.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">Нет данных</td>
                 </tr>
               )}
             </tbody>
