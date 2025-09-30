@@ -12,4 +12,9 @@ export const normalizeStatus = (raw: string | undefined | null): NormalizedStatu
   return map[s] || 'planned';
 };
 
+// Смещение «наследованного» серверного времени.
+// Если ранее слоты сохранялись как локальные UTC+3, укажите 180.
+// Если всё уже в UTC — оставьте 0.
+export const SERVER_BASE_OFFSET_MIN = 0;
+
 

@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { DisplayTimezoneContext } from '../utils/timezoneContext';
+import { formatTimeForDisplay } from '../utils/timezone';
 import { Clock, Users, Calendar, BarChart3, LogOut, Settings, UserPlus, Folder, TrendingUp, CalendarCheck, Plane, Tag, MessageCircle, User as UserIcon, ListTodo, Send } from 'lucide-react';
 import { User } from '../types';
 import { NotificationCenter } from './Notifications/NotificationCenter';
+import { TimezoneSelector } from './TimezoneSelector';
 
 interface LayoutProps {
   user: User;
@@ -13,7 +16,7 @@ interface LayoutProps {
   timeSlots?: any[];
   employees?: User[];
   projects?: any[];
-  updateTimezoneOffset?: (offsetMin: number | null) => Promise<void> | void;
+  updateTimezone?: (timezone: string) => Promise<void>;
 }
 
 interface TabGroup {
@@ -38,56 +41,57 @@ export const Layout: React.FC<LayoutProps> = ({
   timeSlots = [],
   employees = [],
   projects = [],
-  updateTimezoneOffset,
+  updateTimezone,
 }) => {
   const [localTime, setLocalTime] = useState<string>('');
-  const [showTzPicker, setShowTzPicker] = useState<boolean>(false);
-  const [customOffsetMin, setCustomOffsetMin] = useState<number | null>(null); // null = системный
+
+  // Эффективная timezone: user.profile -> system fallback
+  const effectiveZone = useMemo(() => {
+    console.log('User object:', { id: user.id, name: user.name, timezone: user.timezone });
+    if (user.timezone) {
+      console.log('Using user timezone:', user.timezone);
+      return user.timezone;
+    }
+    
+    // Fallback на системное время - определяем ближайший российский timezone
+    const off = -new Date().getTimezoneOffset();
+    const h = Math.floor(off/60);
+    
+    // Маппинг UTC offset на российские timezone
+    const offsetToTimezone: { [key: number]: string } = {
+      2: 'Europe/Kaliningrad',
+      3: 'Europe/Moscow',
+      4: 'Europe/Samara',
+      5: 'Asia/Yekaterinburg',
+      6: 'Asia/Omsk',
+      7: 'Asia/Novosibirsk',
+      8: 'Asia/Irkutsk',
+      9: 'Asia/Yakutsk',
+      10: 'Asia/Vladivostok',
+      11: 'Asia/Magadan',
+      12: 'Asia/Kamchatka',
+    };
+    
+    const fallbackTimezone = offsetToTimezone[h] || 'Europe/Moscow';
+    console.log('Using fallback timezone:', fallbackTimezone, 'for offset:', h);
+    return fallbackTimezone;
+  }, [user.timezone]);
 
   useEffect(() => {
     const formatTime = () => {
-      const now = new Date();
-      const systemOffsetMin = -now.getTimezoneOffset();
-      const userOffset = (user && typeof (user as any).timezoneOffset === 'number') ? (user as any).timezoneOffset as number : null;
-      const offsetMin = (customOffsetMin ?? userOffset) ?? systemOffsetMin;
-      const utcMs = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
-      const localMs = utcMs + offsetMin * 60 * 1000;
-      const d = new Date(localMs);
-      const hh = `${d.getHours()}`.padStart(2, '0');
-      const mm = `${d.getMinutes()}`.padStart(2, '0');
-      const sign = offsetMin >= 0 ? '+' : '-';
-      const abs = Math.abs(offsetMin);
-      const oh = Math.floor(abs / 60).toString();
-      const om = (abs % 60).toString().padStart(2, '0');
-      const tz = (abs % 60 === 0) ? `UTC${sign}${oh}` : `UTC${sign}${oh}:${om}`;
-      setLocalTime(`${hh}:${mm} ${tz}`);
+      setLocalTime(formatTimeForDisplay(effectiveZone));
     };
     formatTime();
     const id = setInterval(formatTime, 60 * 1000);
     return () => clearInterval(id);
-  }, [customOffsetMin, user]);
+  }, [effectiveZone]);
 
-  const tzOptions = useMemo(() => {
-    const opts: { label: string; value: number }[] = [];
-    // Диапазон UTC-12 .. UTC+14 (в минутах)
-    for (let h = -12; h <= 14; h++) {
-      opts.push({ label: `UTC${h >= 0 ? '+' : ''}${h}`, value: h * 60 });
+  // Обработчик смены timezone
+  const handleTimezoneChange = async (timezone: string) => {
+    if (updateTimezone) {
+      await updateTimezone(timezone);
     }
-    return opts;
-  }, []);
-
-  // Эффективный оффсет: custom -> user.profile -> system
-  const effectiveOffsetMin = useMemo(() => {
-    const now = new Date();
-    const systemOffset = -now.getTimezoneOffset();
-    const userOffset = (user && typeof (user as any).timezoneOffset === 'number') ? (user as any).timezoneOffset as number : null;
-    return (customOffsetMin ?? userOffset) ?? systemOffset;
-  }, [customOffsetMin, user]);
-
-  // При смене пользователя сбрасываем локальный оверрайд, чтобы использовался оффсет нового профиля
-  useEffect(() => {
-    setCustomOffsetMin(null);
-  }, [(user as any)?.id]);
+  };
 
   // Не форсируем customOffset из профиля, чтобы позволить выбрать системный
   const [activeGroup, setActiveGroup] = React.useState<string>('personal');
@@ -263,47 +267,16 @@ export const Layout: React.FC<LayoutProps> = ({
                 </p>
               </div>
             <div className="flex items-center space-x-2">
-              {/* Время пользователя рядом с уведомлениями */}
-              <div className="relative hidden sm:flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setShowTzPicker(v => !v)}
-                  className="flex items-center text-gray-600 text-sm px-2 py-1 rounded-md border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer"
-                  aria-label="Локальное время пользователя"
-                >
+              {/* Время пользователя и выбор часового пояса */}
+              <div className="hidden sm:flex items-center space-x-2">
+                <div className="flex items-center text-gray-600 text-sm px-2 py-1 rounded-md border border-gray-200 bg-white">
                   <Clock className="h-4 w-4 mr-1 text-gray-500" />
                   <span>{localTime}</span>
-                </button>
-                {showTzPicker && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-md shadow-xl border z-50 p-2">
-                    <div className="mb-2 text-xs text-gray-500">Выбрать часовой пояс</div>
-                    <button
-                      className={`w-full text-left px-2 py-1 rounded ${customOffsetMin === null && (user as any)?.timezoneOffset == null ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
-                      onClick={async () => { 
-                        setCustomOffsetMin(null); 
-                        setShowTzPicker(false);
-                        if (updateTimezoneOffset) await updateTimezoneOffset(null);
-                      }}
-                    >
-                      Системный (по устройству)
-                    </button>
-                    <div className="max-h-48 overflow-y-auto mt-1">
-                      {tzOptions.map((opt: { label: string; value: number }) => (
-                        <button
-                          key={opt.value}
-                          className={`w-full text-left px-2 py-1 rounded ${effectiveOffsetMin === opt.value ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'}`}
-                          onClick={async () => { 
-                            setCustomOffsetMin(opt.value); 
-                            setShowTzPicker(false);
-                            if (updateTimezoneOffset) await updateTimezoneOffset(opt.value);
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                </div>
+                <TimezoneSelector
+                  currentTimezone={effectiveZone}
+                  onTimezoneChange={handleTimezoneChange}
+                />
               </div>
                 <NotificationCenter
                   timeSlots={timeSlots}
@@ -394,9 +367,16 @@ export const Layout: React.FC<LayoutProps> = ({
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {children}
-      </main>
+      {(() => {
+        const zone = effectiveZone;
+        return (
+          <DisplayTimezoneContext.Provider value={zone}>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          {children}
+        </main>
+          </DisplayTimezoneContext.Provider>
+        );
+      })()}
     </div>
   );
 };

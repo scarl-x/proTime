@@ -10,6 +10,7 @@ import { useTaskCategories } from './hooks/useTaskCategories';
 import { DeadlineNotifications } from './components/DeadlineNotifications';
 import { Login } from './components/Login';
 import { Layout } from './components/Layout';
+import { DisplayTimezoneContext } from './utils/timezoneContext';
 import { EmployeeManagement } from './components/EmployeeManagement';
 import { ProjectManagement } from './components/ProjectManagement';
 import { TaskList } from './components/TaskManagement/TaskList';
@@ -53,7 +54,7 @@ function App() {
     deleteEmployee,
     createEmployeeAccount,
     removeEmployeeAccount,
-    updateTimezoneOffset,
+    updateTimezone,
   } = useAuth();
   const {
     timeSlots,
@@ -417,6 +418,7 @@ function App() {
             date={currentDate.toISOString().split('T')[0]}
             timeSlots={filteredSlots}
             onSlotClick={handleSlotClick}
+            currentUser={user}
           />
         );
       case 'week':
@@ -425,6 +427,7 @@ function App() {
             weekStart={getWeekStart(currentDate)}
             timeSlots={filteredSlots}
             onSlotClick={handleSlotClick}
+            currentUser={user}
           />
         );
       case 'month':
@@ -831,6 +834,7 @@ function App() {
   };
 
   return (
+    <DisplayTimezoneContext.Provider value={user.timezone ?? null}>
     <Layout
       user={user}
       onLogout={logout}
@@ -839,7 +843,7 @@ function App() {
       timeSlots={getAllTimeSlots(bookings)}
       employees={allUsers}
       projects={projects}
-      updateTimezoneOffset={updateTimezoneOffset}
+      updateTimezone={updateTimezone}
     >
       {renderContent()}
 
@@ -978,6 +982,7 @@ function App() {
         </div>
       )}
     </Layout>
+    </DisplayTimezoneContext.Provider>
   );
 }
 

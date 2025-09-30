@@ -1,20 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pause, Split, Repeat } from 'lucide-react';
-import { TimeSlot } from '../../types';
+import { TimeSlot, User } from '../../types';
 import { getWeekDates, getDayName, formatDate } from '../../utils/dateUtils';
 import { getCalendarSlotClasses } from '../../utils/calendarStyles';
 import { getDeadlineStatus } from '../../utils/deadlineUtils';
+import { convertSlotToLocal } from '../../utils/timezone';
+import { DisplayTimezoneContext } from '../../utils/timezoneContext';
 
 interface WeekViewProps {
   weekStart: string;
   timeSlots: TimeSlot[];
   onSlotClick: (slot: TimeSlot) => void;
+  currentUser: User;
 }
 
 export const WeekView: React.FC<WeekViewProps> = ({
   weekStart,
   timeSlots,
   onSlotClick,
+  currentUser,
 }) => {
   const weekDates = getWeekDates(weekStart);
   const START_HOUR = 0;
@@ -23,23 +27,62 @@ export const WeekView: React.FC<WeekViewProps> = ({
   const perMinutePx = perHourPx / 60;
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR);
 
+  // Получаем timezone из контекста
+  const ctxZone = React.useContext(DisplayTimezoneContext);
+  
+  // Вычисляем эффективную timezone
+  const effectiveZone = useMemo(() => {
+    const zone = ctxZone || currentUser.timezone || ((): string => {
+      const off = -new Date().getTimezoneOffset();
+      const h = Math.floor(off/60);
+      return `UTC${h >= 0 ? '+' : ''}${h}`;
+    })();
+    return zone;
+  }, [ctxZone, currentUser]);
+
   const getSlotsForDate = (date: string) => {
-    return timeSlots.filter(slot => slot.date === date);
+    return timeSlots.filter(slot => {
+      try {
+        const converted = convertSlotToLocal(slot, effectiveZone);
+        return converted.date === date;
+      } catch (error) {
+        console.warn('WeekView slot conversion error:', error);
+        return slot.date === date;
+      }
+    });
   };
 
   const getSlotStyle = (slot: TimeSlot) => {
-    const start = parseInt(slot.startTime.split(':')[0]);
-    const startMinutes = parseInt(slot.startTime.split(':')[1] || '0');
-    const duration = slot.actualHours || slot.plannedHours;
-    const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
-    const height = duration * perHourPx;
+    try {
+      const converted = convertSlotToLocal(slot, effectiveZone);
+      const start = parseInt(converted.startTime.split(':')[0]);
+      const startMinutes = parseInt(converted.startTime.split(':')[1] || '0');
+      const duration = slot.actualHours || slot.plannedHours;
+      const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+      const height = duration * perHourPx;
 
-    return {
-      top: `${top}px`,
-      height: `${height}px`,
-      left: '4px',
-      right: '4px',
-    };
+      return {
+        top: `${top}px`,
+        height: `${height}px`,
+        left: '4px',
+        right: '4px',
+      };
+    } catch (error) {
+      console.warn('WeekView getSlotStyle error:', error);
+      // Fallback на оригинальные значения
+      const start = parseInt(slot.startTime.split(':')[0]);
+      const startMinutes = parseInt(slot.startTime.split(':')[1] || '0');
+      const duration = slot.actualHours || slot.plannedHours;
+      const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+      const height = duration * perHourPx;
+
+      return {
+        top: `${top}px`,
+        height: `${height}px`,
+        left: '4px',
+        right: '4px',
+      };
+    }
   };
 
   const getSlotColor = (slot: TimeSlot) => getCalendarSlotClasses(slot);
@@ -86,25 +129,27 @@ export const WeekView: React.FC<WeekViewProps> = ({
             
             {/* Time Slots */}
             <div className="absolute inset-0" style={{ height: `${24 * perHourPx}px` }}>
-              {getSlotsForDate(date).map((slot) => (
-                <div
-                  key={slot.id}
-                  onClick={() => onSlotClick(slot)}
-                  className={`absolute border rounded-md cursor-pointer hover:shadow-md transition duration-200 p-1 sm:p-2 ${getSlotColor(
-                    slot
-                  )}`}
-                  style={getSlotStyle(slot)}
-                >
-                  <div className="text-xs font-medium truncate flex items-center space-x-1 leading-tight">
-                    <span>{slot.task}</span>
-                    {slot.isPaused && <Pause className="h-3 w-3 flex-shrink-0" />}
-                    {slot.parentTaskId && <Split className="h-3 w-3 flex-shrink-0" />}
-                    {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-3 w-3 flex-shrink-0" />}
-                  </div>
-                  <div className="text-xs mt-1 hidden sm:block">
-                    {slot.startTime} - {slot.endTime}
-                  </div>
-                  {slot.deadline && (
+              {getSlotsForDate(date).map((slot) => {
+                const converted = convertSlotToLocal(slot, effectiveZone);
+                return (
+                  <div
+                    key={slot.id}
+                    onClick={() => onSlotClick(slot)}
+                    className={`absolute border rounded-md cursor-pointer hover:shadow-md transition duration-200 p-1 sm:p-2 ${getSlotColor(
+                      slot
+                    )}`}
+                    style={getSlotStyle(slot)}
+                  >
+                    <div className="text-xs font-medium truncate flex items-center space-x-1 leading-tight">
+                      <span>{slot.task}</span>
+                      {slot.isPaused && <Pause className="h-3 w-3 flex-shrink-0" />}
+                      {slot.parentTaskId && <Split className="h-3 w-3 flex-shrink-0" />}
+                      {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-3 w-3 flex-shrink-0" />}
+                    </div>
+                    <div className="text-xs mt-1 hidden sm:block">
+                      {converted.startTime} - {converted.endTime}
+                    </div>
+                    {slot.deadline && (
                     <div className={`text-[10px] sm:text-xs mt-1 ${new Date(slot.deadline) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
                       Дедлайн: {formatDate(slot.deadline)}{slot.deadlineType ? ` (${slot.deadlineType === 'hard' ? 'жёсткий' : 'мягкий'})` : ''}
                       <span className="ml-1">
@@ -131,8 +176,9 @@ export const WeekView: React.FC<WeekViewProps> = ({
                       Часть {slot.taskSequence}
                     </div>
                   )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}

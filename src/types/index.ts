@@ -11,7 +11,7 @@ export interface User {
   birthday?: string; // Дата рождения
   employmentDate?: string; // Дата трудоустройства
   terminationDate?: string; // Дата увольнения (если уволен)
-  timezoneOffset?: number; // Смещение пользователя в минутах относительно UTC
+  timezone?: string; // IANA timezone id (например, Europe/Moscow)
 }
 
 export interface Project {
@@ -30,9 +30,11 @@ export interface TimeSlot {
   employeeId: string;
   projectId: string; // Привязка к проекту
   taskId?: string; // ID задачи из системы задач
-  date: string;
-  startTime: string;
-  endTime: string;
+  date: string; // Legacy: дата в UTC (для обратной совместимости)
+  startTime: string; // Legacy: время в UTC (для обратной совместимости)
+  endTime: string; // Legacy: время в UTC (для обратной совместимости)
+  start_at_utc?: string; // UTC timestamp (основное поле)
+  end_at_utc?: string; // UTC timestamp (основное поле)
   task: string;
   plannedHours: number;
   actualHours: number;

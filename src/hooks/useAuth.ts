@@ -55,6 +55,7 @@ export const useAuth = () => {
         hasAccount: true,
         password: 'password',
         employmentDate: '2024-01-15',
+        timezone: 'Europe/Moscow',
       },
       {
         id: '2',
@@ -66,6 +67,7 @@ export const useAuth = () => {
         password: 'password',
         birthday: '1988-07-22',
         employmentDate: '2024-03-01',
+        timezone: 'Europe/Samara',
       },
       {
         id: '3',
@@ -77,6 +79,7 @@ export const useAuth = () => {
         password: 'password',
         birthday: '1992-11-08',
         employmentDate: '2024-06-01',
+        timezone: 'Asia/Yekaterinburg',
       },
     ];
     setUsers(demoUsers);
@@ -92,6 +95,7 @@ export const useAuth = () => {
         hasAccount: true,
         password: 'password',
         employmentDate: '2024-01-15',
+        timezone: 'Europe/Moscow',
       },
       {
         id: '2',
@@ -103,6 +107,7 @@ export const useAuth = () => {
         password: 'password',
         birthday: '1988-07-22',
         employmentDate: '2024-03-01',
+        timezone: 'Europe/Samara',
       },
       {
         id: '3',
@@ -114,6 +119,7 @@ export const useAuth = () => {
         password: 'password',
         birthday: '1992-11-08',
         employmentDate: '2024-06-01',
+        timezone: 'Asia/Yekaterinburg',
       },
     ];
     setUsers(demoUsers);
@@ -136,6 +142,7 @@ export const useAuth = () => {
       }
 
       console.log('Raw users data from Supabase:', data);
+      console.log('Timezone fields in data:', data.map(u => ({ id: u.id, name: u.name, timezone: u.timezone })));
 
       const formattedUsers: User[] = data.map(dbUser => ({
         id: dbUser.id,
@@ -148,7 +155,7 @@ export const useAuth = () => {
         birthday: dbUser.birthday,
         employmentDate: dbUser.employment_date,
         terminationDate: dbUser.termination_date,
-        timezoneOffset: dbUser.timezone_offset ?? undefined,
+        timezone: dbUser.timezone ?? undefined,
       }));
 
       console.log('Formatted users:', formattedUsers);
@@ -185,6 +192,7 @@ export const useAuth = () => {
       }
 
       console.log('Raw users data from Supabase:', data);
+      console.log('Timezone fields in data:', data.map(u => ({ id: u.id, name: u.name, timezone: u.timezone })));
 
       const formattedUsers: User[] = data.map(dbUser => ({
         id: dbUser.id,
@@ -197,7 +205,7 @@ export const useAuth = () => {
         birthday: dbUser.birthday,
         employmentDate: dbUser.employment_date,
         terminationDate: dbUser.termination_date,
-        timezoneOffset: dbUser.timezone_offset ?? undefined,
+        timezone: dbUser.timezone ?? undefined,
       }));
 
       console.log('Formatted users:', formattedUsers);
@@ -445,20 +453,22 @@ export const useAuth = () => {
     }
   };
 
-  const updateTimezoneOffset = async (offsetMin: number | null) => {
+  const updateTimezone = async (timezone: string) => {
     try {
       if (hasSupabaseCredentials && supabase && user) {
         const { error } = await supabase
           .from('users')
-          .update({ timezone_offset: offsetMin })
+          .update({ timezone })
           .eq('id', user.id);
         if (error) throw error;
+        
+        // Обновляем локальное состояние
+        setUser(prev => prev ? { ...prev, timezone } : prev);
+        setUsers(prev => prev.map(u => u.id === user?.id ? { ...u, timezone } : u));
       }
     } catch (err) {
-      console.error('Failed to update timezone_offset:', err);
-    } finally {
-      setUser(prev => prev ? { ...prev, timezoneOffset: offsetMin ?? undefined } : prev);
-      setUsers(prev => prev.map(u => u.id === user?.id ? { ...u, timezoneOffset: offsetMin ?? undefined } : u));
+      console.error('Failed to update timezone:', err);
+      throw err;
     }
   };
 
@@ -474,6 +484,6 @@ export const useAuth = () => {
     deleteEmployee,
     createEmployeeAccount,
     removeEmployeeAccount,
-    updateTimezoneOffset,
+    updateTimezone,
   };
 };

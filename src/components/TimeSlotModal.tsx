@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { X, Clock, User, Tag, Calendar, Split, Pause, Play, AlertCircle, Repeat, Info } from 'lucide-react';
 import { TimeSlot, User as UserType, Project, TaskCategory } from '../types';
 import { RecurringTaskConfig, generateRecurringTasks, getRecurrenceDescription, WEEKDAY_NAMES } from '../utils/recurringUtils';
 import { formatDate } from '../utils/dateUtils';
 import { calculateAdvancedDeadline, DEFAULT_PLANNING_FACTOR } from '../utils/deadlineUtils';
 import { canExceedPlannedHoursForSlot, isDeadlinePassed } from '../utils/deadlineUtils';
+import { DisplayTimezoneContext } from '../utils/timezoneContext';
+import { convertSlotToLocal, convertLocalToUtc } from '../utils/timezone';
 
 interface TimeSlotModalProps {
   isOpen: boolean;
@@ -97,14 +99,26 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   const [isEditingSplitTask, setIsEditingSplitTask] = useState(false);
   const [splitTaskParts, setSplitTaskParts] = useState<TimeSlot[]>([]);
 
+  const ctxZone = useContext(DisplayTimezoneContext);
+  const effectiveZone = ctxZone || currentUser.timezone || ((): string => {
+    const off = -new Date().getTimezoneOffset();
+    const h = Math.floor(off/60);
+    return `UTC${h >= 0 ? '+' : ''}${h}`;
+  })();
+  
+  console.log('TimeSlotModal effectiveZone:', { ctxZone, userTimezone: currentUser.timezone, effective: effectiveZone });
+
   useEffect(() => {
     if (slot) {
+      // Конвертируем UTC+0 время слота в локальное время пользователя для отображения в форме
+      const converted = convertSlotToLocal(slot, effectiveZone);
+
       setFormData({
         employeeId: slot.employeeId,
         projectId: slot.projectId,
-        date: slot.date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
+        date: converted.date,
+        startTime: converted.startTime,
+        endTime: converted.endTime,
         task: slot.task,
         taskTitle: slot.task,
         taskDescription: '',
@@ -225,13 +239,17 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       setIsEditingSplitTask(false);
       setSplitTaskParts([]);
     }
-  }, [slot, preselectedTask, currentUser.id, projects, timeSlots]);
+  }, [slot, preselectedTask, currentUser.id, projects, timeSlots, effectiveZone]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Конвертируем локальное время автора в UTC+0 для хранения
+    const utcData = convertLocalToUtc(formData.date, formData.startTime, formData.endTime, effectiveZone);
+
     const finalFormData = {
       ...formData,
+      ...utcData,
       task: formData.taskTitle || formData.task || '',
       // Пробрасываем описание для создания связанной задачи в проекте
       calendarDescription: formData.taskDescription,

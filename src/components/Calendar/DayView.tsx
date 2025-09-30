@@ -1,6 +1,8 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import { Pause, Split, Repeat } from 'lucide-react';
-import { TimeSlot } from '../../types';
+import { TimeSlot, User } from '../../types';
+import { DisplayTimezoneContext } from '../../utils/timezoneContext';
+import { convertSlotToLocal } from '../../utils/timezone';
 import { formatDate } from '../../utils/dateUtils';
 import { getCalendarSlotClasses } from '../../utils/calendarStyles';
 import { getRecurrenceDescription } from '../../utils/recurringUtils';
@@ -10,44 +12,56 @@ interface DayViewProps {
   date: string;
   timeSlots: TimeSlot[];
   onSlotClick: (slot: TimeSlot) => void;
+  currentUser: User;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
   date,
   timeSlots,
   onSlotClick,
+  currentUser,
 }) => {
   const START_HOUR = 0; // 00:00
   const END_HOUR = 24; // 24:00 (exclusive)
   const perHourPx = (typeof window !== 'undefined' && window.innerWidth < 640) ? 48 : 60;
   const perMinutePx = perHourPx / 60;
   const hours = useMemo(() => Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR), []);
-
-  const toLocalDateString = useCallback((utcDate: string, utcTime?: string) => {
-    const iso = utcTime ? `${utcDate}T${utcTime}:00Z` : `${utcDate}T00:00:00Z`;
-    const d = new Date(iso);
-    const y = d.getFullYear();
-    const m = `${d.getMonth() + 1}`.padStart(2, '0');
-    const da = `${d.getDate()}`.padStart(2, '0');
-    return `${y}-${m}-${da}`;
-  }, []);
-
-  const toLocalHM = useCallback((utcDate: string, utcTime: string) => {
-    const d = new Date(`${utcDate}T${utcTime}:00Z`);
-    const hh = `${d.getHours()}`.padStart(2, '0');
-    const mm = `${d.getMinutes()}`.padStart(2, '0');
-    return `${hh}:${mm}`;
-  }, []);
-
   const parseHM = (hm: string) => {
     const [h, m] = hm.split(':');
     return { h: parseInt(h), m: parseInt(m) };
   };
 
-  const daySlots = useMemo(
-    () => timeSlots.filter(slot => toLocalDateString(slot.date, slot.startTime) === date),
-    [timeSlots, date, toLocalDateString]
-  );
+  const addDaysToDateString = (baseDate: string, deltaDays: number) => {
+    const d = new Date(`${baseDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + deltaDays);
+    const y = d.getUTCFullYear();
+    const m = `${d.getUTCMonth() + 1}`.padStart(2, '0');
+    const da = `${d.getUTCDate()}`.padStart(2, '0');
+    return `${y}-${m}-${da}`;
+  };
+
+  const ctxZone = useContext(DisplayTimezoneContext);
+  const effectiveZone = useMemo(() => {
+    const zone = ctxZone || currentUser.timezone || ((): string => {
+      const off = -new Date().getTimezoneOffset();
+      const h = Math.floor(off/60);
+      return `UTC${h >= 0 ? '+' : ''}${h}`;
+    })();
+    console.log('DayView effectiveZone:', { ctxZone, userTimezone: currentUser.timezone, effective: zone });
+    return zone;
+  }, [ctxZone, currentUser]);
+
+  const daySlots = useMemo(() => {
+    return timeSlots.filter(slot => {
+      try {
+        const converted = convertSlotToLocal(slot, effectiveZone);
+        return converted.date === date;
+      } catch (error) {
+        console.error('Error converting slot:', slot, error);
+        return false;
+      }
+    });
+  }, [timeSlots, date, effectiveZone]);
 
   type DeadlineInfo = {
     isPast: boolean;
@@ -70,8 +84,8 @@ export const DayView: React.FC<DayViewProps> = ({
   }, []);
 
   const getSlotStyle = useCallback((slot: TimeSlot) => {
-    const localStartHM = toLocalHM(slot.date, slot.startTime);
-    const { h: start, m: startMinutes } = parseHM(localStartHM);
+    const converted = convertSlotToLocal(slot, effectiveZone);
+    const { h: start, m: startMinutes } = parseHM(converted.startTime);
     const duration = slot.actualHours || slot.plannedHours;
     const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
     const rawHeight = duration * perHourPx;
@@ -83,7 +97,7 @@ export const DayView: React.FC<DayViewProps> = ({
       left: '8px',
       right: '8px',
     };
-  }, [perHourPx, perMinutePx, toLocalHM]);
+  }, [perHourPx, perMinutePx, effectiveZone]);
 
   const getSlotColor = useCallback((slot: TimeSlot) => getCalendarSlotClasses(slot), []);
 
@@ -149,7 +163,7 @@ export const DayView: React.FC<DayViewProps> = ({
               {/* Compact inline info row */}
               <div className="mt-1 flex flex-wrap items-center justify-between text-[10px] sm:text-xs gap-1">
                 <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-gray-600 hidden sm:inline">{toLocalHM(slot.date, slot.startTime)}–{toLocalHM(slot.date, slot.endTime)}</span>
+                  <span className="text-gray-600 hidden sm:inline">{convertSlotToLocal(slot, effectiveZone).startTime}–{convertSlotToLocal(slot, effectiveZone).endTime}</span>
                   {slot.category && (
                     <span className="inline-flex items-center px-1 sm:px-2 py-0.5 bg-white/70 rounded border border-gray-200 text-gray-700 truncate">
                       {slot.category}
