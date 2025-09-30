@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, decodeJwt } from 'jose';
+import { SignJWT, jwtVerify, decodeJwt, JWTPayload as JoseJWTPayload } from 'jose';
 import { User } from '../types';
 
 // Секретный ключ для подписи JWT токенов
@@ -8,12 +8,10 @@ const JWT_SECRET = new TextEncoder().encode('your-super-secret-jwt-key-change-in
 // Время жизни токена (24 часа)
 const JWT_EXPIRES_IN = '24h';
 
-export interface JWTPayload {
+export interface JWTPayload extends JoseJWTPayload {
   userId: string;
   email: string;
   role: string;
-  iat?: number;
-  exp?: number;
 }
 
 /**
