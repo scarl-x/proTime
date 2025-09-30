@@ -94,8 +94,8 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   // Не форсируем customOffset из профиля, чтобы позволить выбрать системный
-  const [activeGroup, setActiveGroup] = React.useState<string>('personal');
-  const [activeSubTab, setActiveSubTab] = React.useState<string>('calendar');
+  const [activeGroup, setActiveGroup] = React.useState<string>(user.role === 'admin' ? 'personal' : 'calendar');
+  const [activeSubTab, setActiveSubTab] = React.useState<string>(user.role === 'admin' ? 'calendar' : '');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const adminTabGroups: (TabGroup | Tab)[] = [
@@ -173,8 +173,15 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const employeeTabGroups: (TabGroup | Tab)[] = [
     { id: 'calendar', label: 'Мой календарь', icon: Calendar },
-    { id: 'my-schedule', label: 'Мое расписание', icon: Clock },
-    { id: 'backlog', label: 'Нераспределенные задачи', icon: ListTodo },
+    {
+      id: 'schedule-group',
+      label: 'Мое расписание',
+      icon: Clock,
+      subTabs: [
+        { id: 'my-schedule', label: 'Расписание', icon: Clock },
+        { id: 'backlog', label: 'Нераспределенные задачи', icon: ListTodo },
+      ]
+    },
     { id: 'task-categories', label: 'Категории задач', icon: Tag },
     ...(isTeamLead ? [{ id: 'lead-projects', label: 'Проекты', icon: Folder } as Tab] : []),
     {
@@ -231,6 +238,12 @@ export const Layout: React.FC<LayoutProps> = ({
         setActiveSubTab('');
         return;
       }
+    }
+    
+    // Если не найдена группа, устанавливаем календарь по умолчанию
+    if (activeTab === 'calendar') {
+      setActiveGroup('calendar');
+      setActiveSubTab('');
     }
   }, [activeTab, tabGroups]);
 
