@@ -53,6 +53,7 @@ function App() {
     deleteEmployee,
     createEmployeeAccount,
     removeEmployeeAccount,
+    updateTimezoneOffset,
   } = useAuth();
   const {
     timeSlots,
@@ -838,6 +839,7 @@ function App() {
       timeSlots={getAllTimeSlots(bookings)}
       employees={allUsers}
       projects={projects}
+      updateTimezoneOffset={updateTimezoneOffset}
     >
       {renderContent()}
 

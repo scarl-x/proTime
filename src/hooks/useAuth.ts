@@ -148,6 +148,7 @@ export const useAuth = () => {
         birthday: dbUser.birthday,
         employmentDate: dbUser.employment_date,
         terminationDate: dbUser.termination_date,
+        timezoneOffset: dbUser.timezone_offset ?? undefined,
       }));
 
       console.log('Formatted users:', formattedUsers);
@@ -196,6 +197,7 @@ export const useAuth = () => {
         birthday: dbUser.birthday,
         employmentDate: dbUser.employment_date,
         terminationDate: dbUser.termination_date,
+        timezoneOffset: dbUser.timezone_offset ?? undefined,
       }));
 
       console.log('Formatted users:', formattedUsers);
@@ -443,6 +445,23 @@ export const useAuth = () => {
     }
   };
 
+  const updateTimezoneOffset = async (offsetMin: number | null) => {
+    try {
+      if (hasSupabaseCredentials && supabase && user) {
+        const { error } = await supabase
+          .from('users')
+          .update({ timezone_offset: offsetMin })
+          .eq('id', user.id);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('Failed to update timezone_offset:', err);
+    } finally {
+      setUser(prev => prev ? { ...prev, timezoneOffset: offsetMin ?? undefined } : prev);
+      setUsers(prev => prev.map(u => u.id === user?.id ? { ...u, timezoneOffset: offsetMin ?? undefined } : u));
+    }
+  };
+
   return {
     user,
     isLoading,
@@ -455,5 +474,6 @@ export const useAuth = () => {
     deleteEmployee,
     createEmployeeAccount,
     removeEmployeeAccount,
+    updateTimezoneOffset,
   };
 };

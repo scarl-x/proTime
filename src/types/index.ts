@@ -11,6 +11,7 @@ export interface User {
   birthday?: string; // Дата рождения
   employmentDate?: string; // Дата трудоустройства
   terminationDate?: string; // Дата увольнения (если уволен)
+  timezoneOffset?: number; // Смещение пользователя в минутах относительно UTC
 }
 
 export interface Project {
