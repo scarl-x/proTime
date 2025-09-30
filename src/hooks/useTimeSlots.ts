@@ -3,6 +3,7 @@ import { TimeSlot, WeeklyReport, Booking } from '../types';
 import { supabase, hasSupabaseCredentials } from '../lib/supabase';
 import { useEffect } from 'react';
 import { generateRecurringTasks, RecurringTaskConfig } from '../utils/recurringUtils';
+import { STANDUP_TASK_NAME, normalizeStatus } from '../utils/constants';
 
 export const useTimeSlots = () => {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -107,7 +108,7 @@ export const useTimeSlots = () => {
         task: dbSlot.task,
         plannedHours: dbSlot.planned_hours,
         actualHours: dbSlot.actual_hours,
-        status: dbSlot.status as 'planned' | 'in-progress' | 'completed',
+        status: normalizeStatus(dbSlot.status) as 'planned' | 'in-progress' | 'completed',
         category: dbSlot.category || 'Development',
         parentTaskId: dbSlot.parent_task_id,
         taskSequence: dbSlot.task_sequence,
@@ -115,6 +116,7 @@ export const useTimeSlots = () => {
         isPaused: dbSlot.is_paused || false,
         pausedAt: dbSlot.paused_at,
         resumedAt: dbSlot.resumed_at,
+        completedAt: dbSlot.completed_at,
         isRecurring: dbSlot.is_recurring || false,
         recurrenceType: dbSlot.recurrence_type,
         recurrenceInterval: dbSlot.recurrence_interval,
@@ -308,12 +310,23 @@ export const useTimeSlots = () => {
         slot.employeeId === employeeId &&
         slotDate >= new Date(weekStart) &&
         slotDate <= weekEnd &&
-        slot.task !== 'Ежедневный дейлик команды' // Исключаем дейлики из отчетов
+        slot.task !== STANDUP_TASK_NAME // Исключаем дейлики из отчетов
       );
     });
 
     const totalPlannedHours = weekSlots.reduce((sum, slot) => sum + slot.plannedHours, 0);
     const totalActualHours = weekSlots.reduce((sum, slot) => sum + slot.actualHours, 0);
+    // Отклонение считаем только по слотам, у которых дедлайн прошёл
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const variance = weekSlots.reduce((sum, slot) => {
+      if (!slot.deadline) return sum;
+      const deadline = new Date(slot.deadline);
+      if (deadline < startOfToday) {
+        return sum + (slot.actualHours - slot.plannedHours);
+      }
+      return sum;
+    }, 0);
 
     return {
       employeeId,
@@ -322,7 +335,7 @@ export const useTimeSlots = () => {
       weekEnd: weekEnd.toISOString().split('T')[0],
       totalPlannedHours,
       totalActualHours,
-      variance: totalActualHours - totalPlannedHours,
+      variance,
       slots: weekSlots,
     };
   };
@@ -338,12 +351,22 @@ export const useTimeSlots = () => {
         slot.projectId === projectId &&
         slotDate >= new Date(weekStart) &&
         slotDate <= weekEnd &&
-        slot.task !== 'Ежедневный дейлик команды' // Исключаем дейлики из отчетов
+        slot.task !== STANDUP_TASK_NAME // Исключаем дейлики из отчетов
       );
     });
 
     const totalPlannedHours = weekSlots.reduce((sum, slot) => sum + slot.plannedHours, 0);
     const totalActualHours = weekSlots.reduce((sum, slot) => sum + slot.actualHours, 0);
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const variance = weekSlots.reduce((sum, slot) => {
+      if (!slot.deadline) return sum;
+      const deadline = new Date(slot.deadline);
+      if (deadline < startOfToday) {
+        return sum + (slot.actualHours - slot.plannedHours);
+      }
+      return sum;
+    }, 0);
 
     return {
       employeeId,
@@ -352,7 +375,7 @@ export const useTimeSlots = () => {
       weekEnd: weekEnd.toISOString().split('T')[0],
       totalPlannedHours,
       totalActualHours,
-      variance: totalActualHours - totalPlannedHours,
+      variance,
       slots: weekSlots,
     };
   };

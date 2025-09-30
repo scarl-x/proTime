@@ -1,7 +1,9 @@
 import React from 'react';
 import { Pause, Split, Repeat } from 'lucide-react';
 import { TimeSlot } from '../../types';
-import { getMonthName } from '../../utils/dateUtils';
+import { getMonthName, formatDate } from '../../utils/dateUtils';
+import { getCalendarSlotClasses } from '../../utils/calendarStyles';
+import { isTimeSlotOverdue } from '../../utils/deadlineUtils';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -105,15 +107,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
                   {slots.slice(0, 2).map((slot) => (
                     <div
                       key={slot.id}
-                      className={`text-xs p-1 rounded truncate leading-tight ${
-                        slot.isPaused
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : slot.status === 'завершено'
-                          ? 'bg-green-100 text-green-700'
-                          : slot.status === 'в-работе'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
+                      className={`text-xs p-1 rounded truncate leading-tight ${getCalendarSlotClasses(slot)}`}
                     >
                       <div className="flex items-center space-x-1">
                         <span className="truncate text-xs">{slot.task}</span>
@@ -121,6 +115,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                         {slot.parentTaskId && <Split className="h-2 w-2 flex-shrink-0" />}
                         {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-2 w-2 flex-shrink-0" />}
                       </div>
+                      {slot.deadline && (
+                        <div className={`mt-0.5 text-[10px] ${isTimeSlotOverdue(slot) ? 'text-red-600' : 'text-gray-700'}`}>
+                          Дедл.: {formatDate(slot.deadline)}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {slots.length > 2 && (

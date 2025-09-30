@@ -68,7 +68,16 @@ export const ProjectAnalytics: React.FC<ProjectAnalyticsProps> = ({
 
     const totalPlanned = filteredSlots.reduce((sum, slot) => sum + slot.plannedHours, 0);
     const totalActual = filteredSlots.reduce((sum, slot) => sum + slot.actualHours, 0);
-    const completedTasks = filteredSlots.filter(slot => slot.status === 'завершено').length;
+    // Deadline-aware variance: считаем только по слотам с прошедшим дедлайном
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const variance = filteredSlots.reduce((sum, slot) => {
+      if (!slot.deadline) return sum;
+      const d = new Date(slot.deadline);
+      if (d < startOfToday) return sum + (slot.actualHours - slot.plannedHours);
+      return sum;
+    }, 0);
+    const completedTasks = filteredSlots.filter(slot => slot.status === 'completed').length;
     const totalTasks = filteredSlots.length;
     const activeEmployees = new Set(filteredSlots.map(slot => slot.employeeId)).size;
 
@@ -92,7 +101,7 @@ export const ProjectAnalytics: React.FC<ProjectAnalyticsProps> = ({
       projectId,
       totalPlanned,
       totalActual,
-      variance: totalActual - totalPlanned,
+      variance,
       completedTasks,
       totalTasks,
       efficiency: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
@@ -105,7 +114,7 @@ export const ProjectAnalytics: React.FC<ProjectAnalyticsProps> = ({
     const filteredSlots = getFilteredSlots();
     const totalPlanned = filteredSlots.reduce((sum, slot) => sum + slot.plannedHours, 0);
     const totalActual = filteredSlots.reduce((sum, slot) => sum + slot.actualHours, 0);
-    const completedTasks = filteredSlots.filter(slot => slot.status === 'завершено').length;
+    const completedTasks = filteredSlots.filter(slot => slot.status === 'completed').length;
     const totalTasks = filteredSlots.length;
     const activeProjects = new Set(filteredSlots.map(slot => slot.projectId)).size;
     const activeEmployees = new Set(filteredSlots.map(slot => slot.employeeId)).size;

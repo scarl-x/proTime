@@ -66,6 +66,10 @@ export const isDeadlineApproaching = (deadline: string): boolean => {
  */
 export const isTaskAssignmentOverdue = (assignment: TaskAssignment): boolean => {
   if (!assignment.deadline) return false;
+  // Если завершено до дедлайна — не просрочено
+  if (assignment.completedAt) {
+    return new Date(assignment.completedAt) > new Date(assignment.deadline);
+  }
   return isDeadlinePassed(assignment.deadline);
 };
 
@@ -74,7 +78,15 @@ export const isTaskAssignmentOverdue = (assignment: TaskAssignment): boolean => 
  */
 export const isTimeSlotOverdue = (slot: TimeSlot): boolean => {
   if (!slot.deadline) return false;
-  return isDeadlinePassed(slot.deadline) && slot.status !== 'completed';
+  // Если завершено до дедлайна — не просрочено
+  if (slot.completedAt) {
+    return new Date(slot.completedAt) > new Date(slot.deadline);
+  }
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const deadline = new Date(slot.deadline);
+  const completed = slot.status === 'completed';
+  return deadline < startOfToday && !completed;
 };
 
 /**

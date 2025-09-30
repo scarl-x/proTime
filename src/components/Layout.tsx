@@ -98,6 +98,8 @@ export const Layout: React.FC<LayoutProps> = ({
       subTabs: [
         { id: 'reports', label: 'Еженедельные отчеты', icon: BarChart3 },
         { id: 'analytics', label: 'Аналитика проектов', icon: TrendingUp },
+        { id: 'overdue-report', label: 'Просроченные дедлайны', icon: TrendingUp },
+        { id: 'performance', label: 'Производительность команды', icon: TrendingUp },
       ]
     },
     {

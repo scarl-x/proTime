@@ -30,8 +30,10 @@ import { WeekView } from './components/Calendar/WeekView';
 import { MonthView } from './components/Calendar/MonthView';
 import { TimeSlotModal } from './components/TimeSlotModal';
 import { WeeklyReport } from './components/Reports/WeeklyReport';
+import { OverdueDeadlinesReport } from './components/Reports/OverdueDeadlinesReport';
 import { DailyStandupSettings } from './components/Settings/DailyStandupSettings';
 import { ProjectAnalytics } from './components/Reports/ProjectAnalytics';
+import { PerformanceAnalytics } from './components/Reports/PerformanceAnalytics';
 import { EmployeeList } from './components/EmployeeList';
 import { EmployeeDaySchedule } from './components/EmployeeSchedule/EmployeeDaySchedule';
 import { EmployeeBirthdayCards } from './components/EmployeeBirthdayCards';
@@ -659,11 +661,34 @@ function App() {
 
       case 'analytics':
         return (
-          <ProjectAnalytics
-            projects={projects}
-            timeSlots={getAllTimeSlots(bookings)}
-            employees={allUsers}
-          />
+          user.role === 'admin' ? (
+            <ProjectAnalytics
+              projects={projects}
+              timeSlots={getAllTimeSlots(bookings)}
+              employees={allUsers}
+            />
+          ) : null
+        );
+
+      case 'overdue-report':
+        return (
+          user.role === 'admin' ? (
+            <OverdueDeadlinesReport
+              timeSlots={getAllTimeSlots(bookings)}
+              employees={allUsers}
+            />
+          ) : null
+        );
+
+      case 'performance':
+        return (
+          user.role === 'admin' ? (
+            <PerformanceAnalytics
+              timeSlots={getAllTimeSlots(bookings)}
+              employees={allUsers}
+              projects={projects}
+            />
+          ) : null
         );
 
       case 'bookings':

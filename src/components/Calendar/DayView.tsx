@@ -2,6 +2,7 @@ import React from 'react';
 import { Pause, Split, Repeat } from 'lucide-react';
 import { TimeSlot } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
+import { getCalendarSlotClasses } from '../../utils/calendarStyles';
 import { getRecurrenceDescription } from '../../utils/recurringUtils';
 
 interface DayViewProps {
@@ -33,17 +34,7 @@ export const DayView: React.FC<DayViewProps> = ({
     };
   };
 
-  const getSlotColor = (slot: TimeSlot) => {
-    if (slot.status === 'завершено') {
-      return slot.actualHours !== slot.plannedHours
-        ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
-        : 'bg-green-100 border-green-300 text-green-800';
-    }
-    if (slot.status === 'в-работе') {
-      return 'bg-blue-100 border-blue-300 text-blue-800';
-    }
-    return 'bg-gray-100 border-gray-300 text-gray-600';
-  };
+  const getSlotColor = (slot: TimeSlot) => getCalendarSlotClasses(slot);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -85,6 +76,11 @@ export const DayView: React.FC<DayViewProps> = ({
               <div className="text-xs text-gray-600 mb-1 hidden sm:block">
                 {slot.startTime} - {slot.endTime}
               </div>
+              {slot.deadline && (
+                <div className={`text-[10px] sm:text-xs mt-1 ${new Date(slot.deadline) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
+                  Дедлайн: {formatDate(slot.deadline)}{slot.deadlineType ? ` (${slot.deadlineType === 'hard' ? 'жёсткий' : 'мягкий'})` : ''}
+                </div>
+              )}
               <div className="text-xs">
                 <span className="inline-block px-1 sm:px-2 py-1 bg-white bg-opacity-50 rounded text-xs">
                   {slot.category}

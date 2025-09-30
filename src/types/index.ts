@@ -5,6 +5,7 @@ export interface User {
   role: 'admin' | 'employee';
   avatar?: string;
   position?: string; // Роль сотрудника (тим-лид, разработчик и т.д.)
+  department?: string; // Отдел/команда (для отчетов по отделам)
   hasAccount?: boolean; // Есть ли у сотрудника аккаунт для входа
   password?: string; // Пароль для входа (в реальном приложении должен быть хешированным)
   birthday?: string; // Дата рождения
@@ -36,6 +37,7 @@ export interface TimeSlot {
   actualHours: number;
   status: 'planned' | 'in-progress' | 'completed';
   category: string;
+  completedAt?: string; // Дата фактического завершения слота
   // Новые поля для разбиения задач
   parentTaskId?: string; // ID родительской задачи (если это часть разбитой задачи)
   taskSequence?: number; // Порядковый номер части задачи (1, 2, 3...)
@@ -164,6 +166,20 @@ export interface Task {
   totalCost: number;
   status: 'new' | 'planned' | 'in-progress' | 'code-review' | 'testing-internal' | 'testing-client' | 'closed';
   createdBy: string;
+  // Дедлайны на уровне задачи (могут быть переопределены в назначениях)
+  deadline?: string;
+  deadlineType?: 'soft' | 'hard';
+  deadlineReason?: string;
+  // Факт завершения задачи
+  completedAt?: string;
+  // История изменений дедлайна
+  deadlineChangeLog?: Array<{
+    changedAt: string; // ISO
+    oldDeadline?: string;
+    newDeadline?: string;
+    changedByUserId: string;
+    reason?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -175,6 +191,7 @@ export interface TaskAssignment {
   allocatedHours: number;
   actualHours: number;
   createdAt: string;
+  completedAt?: string; // Дата фактического завершения назначения
   // Поля для дедлайнов (перенесены из Task)
   deadline?: string; // Дедлайн для этого назначения
   deadlineType?: 'soft' | 'hard'; // Тип дедлайна
