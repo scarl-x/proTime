@@ -182,7 +182,7 @@ export const formatTimeForDisplay = (zone: string): string => {
       const mm = parts.find(p => p.type === 'minute')?.value || '00';
       return `${hh}:${mm} ${zone}`;
     } catch (error) {
-      console.warn('Intl API failed, using fallback:', error);
+      // Intl API failed, using fallback
     }
   }
   
@@ -202,7 +202,7 @@ export const formatTimeForDisplay = (zone: string): string => {
       const mm = parts.find(p => p.type === 'minute')?.value || '00';
       return `${hh}:${mm} ${zone}`;
     } catch (error) {
-      console.warn('IANA conversion failed, using fallback:', error);
+      // IANA conversion failed, using fallback
     }
   }
   

@@ -46,7 +46,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
         const converted = convertSlotToLocal(slot, effectiveZone);
         return converted.date === date;
       } catch (error) {
-        console.warn('WeekView slot conversion error:', error);
         return slot.date === date;
       }
     });
@@ -68,7 +67,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
         right: '4px',
       };
     } catch (error) {
-      console.warn('WeekView getSlotStyle error:', error);
       // Fallback на оригинальные значения
       const start = parseInt(slot.startTime.split(':')[0]);
       const startMinutes = parseInt(slot.startTime.split(':')[1] || '0');

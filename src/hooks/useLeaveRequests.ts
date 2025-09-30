@@ -49,7 +49,6 @@ export const useLeaveRequests = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading leave requests from Supabase...');
       const { data, error } = await supabase
         .from('leave_requests')
         .select('*')

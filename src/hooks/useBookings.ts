@@ -68,7 +68,6 @@ export const useBookings = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading bookings from Supabase...');
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
@@ -78,8 +77,6 @@ export const useBookings = () => {
         console.error('Supabase error loading bookings:', error);
         throw error;
       }
-
-      console.log('Raw bookings data from Supabase:', data);
 
       const formattedBookings: Booking[] = data.map(dbBooking => ({
         id: dbBooking.id,
@@ -97,7 +94,6 @@ export const useBookings = () => {
         updatedAt: dbBooking.updated_at,
       }));
 
-      console.log('Formatted bookings:', formattedBookings);
       setBookings(formattedBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);

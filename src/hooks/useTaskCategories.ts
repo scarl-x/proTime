@@ -78,7 +78,6 @@ export const useTaskCategories = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading task categories from Supabase...');
       const { data, error } = await supabase
         .from('task_categories')
         .select('*')
@@ -105,7 +104,6 @@ export const useTaskCategories = () => {
       setCategories(formattedCategories);
       
       if (formattedCategories.length === 0) {
-        console.log('No categories found, creating demo categories...');
         await createDemoCategoriesInSupabase();
       }
     } catch (error) {
@@ -117,8 +115,6 @@ export const useTaskCategories = () => {
     if (!supabase) return;
     
     try {
-      console.log('Creating demo task categories in Supabase...');
-      
       // Get admin user ID
       const { data: adminUser } = await supabase
         .from('users')
@@ -184,7 +180,6 @@ export const useTaskCategories = () => {
         return;
       }
 
-      console.log('Demo task categories created successfully:', data);
       await loadCategories();
     } catch (error) {
       console.error('Error in createDemoCategoriesInSupabase:', error);

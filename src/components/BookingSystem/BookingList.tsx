@@ -40,26 +40,16 @@ export const BookingList: React.FC<BookingListProps> = ({
     // Use defaultFilter if available, otherwise use filter state
     const currentFilter = defaultFilter || filter;
 
-    // Debug logging
-    console.log('BookingList filter debug:', {
-      currentFilter,
-      defaultFilter,
-      filter,
-      currentUserId: currentUser.id,
-      totalBookings: bookings.length
-    });
 
     // Filter by user relationship
     if (currentFilter === 'my-requests') {
       filtered = filtered.filter(booking => {
         const isMyRequest = booking.requesterId === currentUser.id;
-        console.log('my-requests filter:', { bookingId: booking.id, requesterId: booking.requesterId, employeeId: booking.employeeId, isMyRequest });
         return isMyRequest;
       });
     } else if (currentFilter === 'my-bookings') {
       filtered = filtered.filter(booking => {
         const isMyBooking = booking.employeeId === currentUser.id;
-        console.log('my-bookings filter:', { bookingId: booking.id, requesterId: booking.requesterId, employeeId: booking.employeeId, isMyBooking });
         return isMyBooking;
       });
     }
@@ -69,7 +59,6 @@ export const BookingList: React.FC<BookingListProps> = ({
       filtered = filtered.filter(booking => booking.status === statusFilter);
     }
 
-    console.log('Filtered bookings count:', filtered.length);
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
