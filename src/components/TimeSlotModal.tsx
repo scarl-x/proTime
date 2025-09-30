@@ -933,7 +933,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 </label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="0.1"
                   min="0"
                   value={formData.plannedHours}
                   onChange={(e) => setFormData({ ...formData, plannedHours: parseFloat(e.target.value) })}
@@ -978,7 +978,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 </label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="0.1"
                   min="0"
                   value={formData.actualHours}
                   onChange={(e) => setFormData({ ...formData, actualHours: parseFloat(e.target.value) })}

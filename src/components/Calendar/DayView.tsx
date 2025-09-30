@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pause, Split, Repeat } from 'lucide-react';
 import { TimeSlot } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
@@ -17,15 +17,40 @@ export const DayView: React.FC<DayViewProps> = ({
   timeSlots,
   onSlotClick,
 }) => {
-  const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 6:00 to 22:00
-  const daySlots = timeSlots.filter(slot => slot.date === date);
+  const START_HOUR = 0; // 00:00
+  const END_HOUR = 24; // 24:00 (exclusive)
+  const perHourPx = (typeof window !== 'undefined' && window.innerWidth < 640) ? 48 : 60;
+  const perMinutePx = perHourPx / 60;
+  const hours = useMemo(() => Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR), []);
+  const daySlots = useMemo(() => timeSlots.filter(slot => slot.date === date), [timeSlots, date]);
 
-  const getSlotStyle = (slot: TimeSlot) => {
+  type DeadlineInfo = {
+    isPast: boolean;
+    isSoon: boolean;
+    isHard: boolean;
+    label: string;
+  } | null;
+
+  const getDeadlineInfo = useCallback((deadline?: string, type?: 'hard' | 'soft'): DeadlineInfo => {
+    if (!deadline) return null;
+    const st = getDeadlineStatus(deadline, type);
+    const isPast = new Date(deadline) < new Date();
+    const typeLabel = type ? (type === 'hard' ? 'жёсткий' : 'мягкий') : '';
+    return {
+      isPast,
+      isSoon: st.status === 'approaching',
+      isHard: type === 'hard',
+      label: `${formatDate(deadline)}${type ? ` (${typeLabel})` : ''}`,
+    };
+  }, []);
+
+  const getSlotStyle = useCallback((slot: TimeSlot) => {
     const start = parseInt(slot.startTime.split(':')[0]);
     const startMinutes = parseInt(slot.startTime.split(':')[1]);
     const duration = slot.actualHours || slot.plannedHours;
-    const top = (start - 6) * 60 + startMinutes;
-    const height = duration * 60;
+    const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+    const rawHeight = duration * perHourPx;
+    const height = Math.max(rawHeight, 28);
 
     return {
       top: `${top}px`,
@@ -33,9 +58,11 @@ export const DayView: React.FC<DayViewProps> = ({
       left: '8px',
       right: '8px',
     };
-  };
+  }, [perHourPx, perMinutePx]);
 
-  const getSlotColor = (slot: TimeSlot) => getCalendarSlotClasses(slot);
+  const getSlotColor = useCallback((slot: TimeSlot) => getCalendarSlotClasses(slot), []);
+
+  
 
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -47,18 +74,18 @@ export const DayView: React.FC<DayViewProps> = ({
 
       <div className="relative overflow-x-auto">
         {hours.map((hour) => (
-          <div key={hour} className="flex border-b min-w-[600px]">
-            <div className="w-12 sm:w-16 p-2 sm:p-4 text-xs sm:text-sm text-gray-500 border-r flex-shrink-0">
+          <div key={hour} className="flex border-b min-w-[600px]" style={{ height: `${perHourPx}px` }}>
+            <div className="w-12 sm:w-16 p-2 sm:p-4 text-xs sm:text-sm text-gray-500 border-r flex-shrink-0 sticky left-0 bg-white z-10">
               {hour.toString().padStart(2, '0')}:00
             </div>
-            <div className="flex-1 h-12 sm:h-15 relative">
+            <div className="flex-1 relative" style={{ height: `${perHourPx}px` }}>
               {/* Hour grid */}
             </div>
           </div>
         ))}
 
         {/* Time Slots */}
-        <div className="absolute inset-0 left-12 sm:left-16" style={{ height: `${17 * (window.innerWidth < 640 ? 48 : 60)}px` }}>
+        <div className="absolute inset-0 left-12 sm:left-16" style={{ height: `${24 * perHourPx}px` }}>
           {daySlots.map((slot) => (
             <div
               key={slot.id}
@@ -68,62 +95,75 @@ export const DayView: React.FC<DayViewProps> = ({
               )}`}
               style={getSlotStyle(slot)}
             >
-              <div className="font-medium text-xs sm:text-sm mb-1 flex items-center space-x-1 sm:space-x-2">
-                <span>{slot.task}</span>
-                {slot.isPaused && <Pause className="h-3 w-3 flex-shrink-0" />}
-                {slot.parentTaskId && <Split className="h-3 w-3 flex-shrink-0" />}
-                {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-3 w-3 flex-shrink-0" />}
-              </div>
-              <div className="text-xs text-gray-600 mb-1 hidden sm:block">
-                {slot.startTime} - {slot.endTime}
-              </div>
-              {slot.deadline && (
-                <div className="text-[10px] sm:text-xs mt-1 flex items-center space-x-1">
-                  {slot.deadlineType === 'hard' && <span className="inline-block px-1 border border-red-400 text-red-600 rounded">HARD</span>}
-                  {(() => {
-                    const st = getDeadlineStatus(slot.deadline, slot.deadlineType);
-                    const isSoon = st.status === 'approaching';
-                    return isSoon ? <span className="inline-block px-1 bg-orange-100 text-orange-700 rounded">Скоро дедлайн</span> : null;
-                  })()}
+              <div className="flex items-start justify-between space-x-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-xs sm:text-sm mb-1 flex items-center space-x-1 sm:space-x-2 truncate">
+                    <span className="truncate" title={slot.task}>{slot.task}</span>
+                    {slot.isPaused && <Pause className="h-3 w-3 flex-shrink-0" />}
+                    {slot.parentTaskId && <Split className="h-3 w-3 flex-shrink-0" />}
+                    {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-3 w-3 flex-shrink-0" />}
+                  </div>
+                  {/* Время выводим в компактной строке ниже, чтобы не дублировать */}
                 </div>
-              )}
-              {slot.deadline && (
-                <div className={`text-[10px] sm:text-xs mt-1 ${new Date(slot.deadline) < new Date() ? 'text-red-600' : 'text-gray-700'}`}>
-                  Дедлайн: {formatDate(slot.deadline)}{slot.deadlineType ? ` (${slot.deadlineType === 'hard' ? 'жёсткий' : 'мягкий'})` : ''}
-                </div>
-              )}
-              <div className="text-xs">
-                <span className="inline-block px-1 sm:px-2 py-1 bg-white bg-opacity-50 rounded text-xs">
-                  {slot.category}
-                </span>
-                {slot.taskSequence && (
-                  <span className="inline-block px-1 sm:px-2 py-1 bg-white bg-opacity-50 rounded ml-1 text-xs hidden sm:inline-block">
-                    {slot.taskSequence}/{Math.ceil((slot.totalTaskHours || slot.plannedHours) / 8)}
-                  </span>
-                )}
+                <div className="flex flex-col items-end text-right text-[10px] sm:text-xs flex-shrink-0 space-y-1" />
               </div>
-              {slot.isRecurring && (
-                <div className="text-xs text-purple-600 mt-1 hidden sm:block">
-                  {getRecurrenceDescription(
-                    slot.recurrenceType,
-                    slot.recurrenceInterval,
-                    slot.recurrenceDays,
-                    slot.recurrenceEndDate,
-                    slot.recurrenceCount
+              {(() => {
+                const di = getDeadlineInfo(slot.deadline, slot.deadlineType);
+                if (!di) return null;
+                return (
+                  <div className="text-[10px] sm:text-xs mt-1 flex items-center space-x-1">
+                    {di.isHard && (
+                      <span className="inline-block px-1 border border-red-400 text-red-600 rounded">HARD</span>
+                    )}
+                    {di.isSoon && (
+                      <span className="inline-block px-1 bg-orange-100 text-orange-700 rounded">Скоро дедлайн</span>
+                    )}
+                  </div>
+                );
+              })()}
+              {/* Compact inline info row */}
+              <div className="mt-1 flex flex-wrap items-center justify-between text-[10px] sm:text-xs gap-1">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-gray-600 hidden sm:inline">{slot.startTime}–{slot.endTime}</span>
+                  {slot.category && (
+                    <span className="inline-flex items-center px-1 sm:px-2 py-0.5 bg-white/70 rounded border border-gray-200 text-gray-700 truncate">
+                      {slot.category}
+                    </span>
+                  )}
+                  {slot.taskSequence && (
+                    <span className="inline-flex items-center px-1 sm:px-2 py-0.5 bg-white/70 rounded border border-gray-200 text-gray-600">
+                      {slot.taskSequence}/{Math.ceil((slot.totalTaskHours || slot.plannedHours) / 8)}
+                    </span>
+                  )}
+                  {slot.isRecurring && (
+                    <span className="inline-flex items-center px-1 sm:px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                      Повтор
+                    </span>
+                  )}
+                  {slot.isPaused && (
+                    <span className="inline-flex items-center px-1 sm:px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded border border-yellow-200">
+                      Пауза
+                    </span>
                   )}
                 </div>
-              )}
-              <div className="text-xs mt-2">
-                <div className="flex flex-col sm:flex-row sm:justify-between space-y-1 sm:space-y-0">
-                  <span className={slot.actualHours > 0 ? '' : 'text-red-600 font-medium'}>
-                    {slot.actualHours > 0 ? `Факт: ${slot.actualHours}ч` : 'Факт: не проставлен'}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Факт/План показываем только здесь, не дублируем сверху */}
+                  <span className={slot.actualHours > 0 ? 'text-gray-800' : 'text-red-600 font-medium'}>
+                    {slot.actualHours > 0 ? `Факт: ${slot.actualHours}ч` : 'Факт: —'}
                   </span>
-                  <span>План: {slot.plannedHours}ч</span>
+                  <span className="text-gray-700">План: {slot.plannedHours}ч</span>
+                  {(() => {
+                    const di = getDeadlineInfo(slot.deadline, slot.deadlineType);
+                    if (!di) return null;
+                    return (
+                      <span className={di.isPast ? 'text-red-600' : 'text-gray-700'}>
+                        {di.label}
+                      </span>
+                    );
+                  })()}
                 </div>
-                {slot.isPaused && (
-                  <div className="text-yellow-700 font-medium text-xs">ПАУЗА</div>
-                )}
               </div>
+              
             </div>
           ))}
         </div>

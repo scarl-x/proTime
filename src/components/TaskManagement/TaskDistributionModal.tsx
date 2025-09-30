@@ -108,8 +108,10 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
         
         if (hoursForDay > 0) {
           const startTime = '09:00';
-          const endHour = 9 + hoursForDay;
-          const endTime = `${endHour.toString().padStart(2, '0')}:00`;
+          const endTotalMinutes = 9*60 + Math.round(hoursForDay * 60);
+          const endH = Math.floor(endTotalMinutes / 60);
+          const endM = endTotalMinutes % 60;
+          const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
           
           if (isDateAvailable(dateStr, startTime, endTime)) {
             slots.push({
@@ -454,24 +456,24 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Часов в день
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    step="0.5"
-                    value={autoDistribution.hoursPerDay}
-                    onChange={(e) => {
-                      setAutoDistribution(prev => ({ 
-                        ...prev, 
-                        hoursPerDay: parseFloat(e.target.value) || 8 
-                      }));
-                      // Пересчитываем дедлайн при изменении часов в день
-                      if (assignment.allocatedHours > 0) {
-                        calculateRecommendedDeadlineForAssignment();
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+              <input
+                type="number"
+                min="0.1"
+                max="12"
+                step="0.1"
+                value={autoDistribution.hoursPerDay}
+                onChange={(e) => {
+                  setAutoDistribution(prev => ({ 
+                    ...prev, 
+                    hoursPerDay: parseFloat(e.target.value) || 8 
+                  }));
+                  // Пересчитываем дедлайн при изменении часов в день
+                  if (assignment.allocatedHours > 0) {
+                    calculateRecommendedDeadlineForAssignment();
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -795,8 +797,8 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
                             </label>
                             <input
                               type="number"
-                              step="0.5"
-                              min="0.5"
+                              step="0.1"
+                              min="0.1"
                               max="12"
                               value={slot.hours}
                               onChange={(e) => updateManualSlot(index, { hours: parseFloat(e.target.value) || 0 })}

@@ -17,7 +17,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
   onSlotClick,
 }) => {
   const weekDates = getWeekDates(weekStart);
-  const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
+  const START_HOUR = 0;
+  const END_HOUR = 24;
+  const perHourPx = (typeof window !== 'undefined' && window.innerWidth < 640) ? 48 : 60;
+  const perMinutePx = perHourPx / 60;
+  const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR);
 
   const getSlotsForDate = (date: string) => {
     return timeSlots.filter(slot => slot.date === date);
@@ -25,9 +29,10 @@ export const WeekView: React.FC<WeekViewProps> = ({
 
   const getSlotStyle = (slot: TimeSlot) => {
     const start = parseInt(slot.startTime.split(':')[0]);
+    const startMinutes = parseInt(slot.startTime.split(':')[1] || '0');
     const duration = slot.actualHours || slot.plannedHours;
-    const top = (start - 6) * 60; // 60px per hour
-    const height = duration * 60;
+    const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+    const height = duration * perHourPx;
 
     return {
       top: `${top}px`,
@@ -62,7 +67,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
         {/* Time Column */}
         <div className="border-r">
           {hours.map((hour) => (
-            <div key={hour} className="h-12 sm:h-15 px-2 sm:px-4 py-2 sm:py-3 border-b text-xs sm:text-sm text-gray-500">
+            <div
+              key={hour}
+              className="px-2 sm:px-4 border-b text-xs sm:text-sm text-gray-500 flex items-center"
+              style={{ height: `${perHourPx}px` }}
+            >
               {hour.toString().padStart(2, '0')}:00
             </div>
           ))}
@@ -72,11 +81,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
         {weekDates.map((date, dateIndex) => (
           <div key={date} className="relative border-l">
             {hours.map((hour) => (
-              <div key={hour} className="h-12 sm:h-15 border-b"></div>
+              <div key={hour} className="border-b" style={{ height: `${perHourPx}px` }}></div>
             ))}
             
             {/* Time Slots */}
-            <div className="absolute inset-0" style={{ height: `${17 * (window.innerWidth < 640 ? 48 : 60)}px` }}>
+            <div className="absolute inset-0" style={{ height: `${24 * perHourPx}px` }}>
               {getSlotsForDate(date).map((slot) => (
                 <div
                   key={slot.id}
