@@ -47,7 +47,6 @@ export const DayView: React.FC<DayViewProps> = ({
       const h = Math.floor(off/60);
       return `UTC${h >= 0 ? '+' : ''}${h}`;
     })();
-    console.log('DayView effectiveZone:', { ctxZone, userTimezone: currentUser.timezone, effective: zone });
     return zone;
   }, [ctxZone, currentUser]);
 

@@ -106,7 +106,6 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     return `UTC${h >= 0 ? '+' : ''}${h}`;
   })();
   
-  console.log('TimeSlotModal effectiveZone:', { ctxZone, userTimezone: currentUser.timezone, effective: effectiveZone });
 
   useEffect(() => {
     if (slot) {

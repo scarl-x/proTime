@@ -47,9 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Эффективная timezone: user.profile -> system fallback
   const effectiveZone = useMemo(() => {
-    console.log('User object:', { id: user.id, name: user.name, timezone: user.timezone });
     if (user.timezone) {
-      console.log('Using user timezone:', user.timezone);
       return user.timezone;
     }
     
@@ -73,7 +71,6 @@ export const Layout: React.FC<LayoutProps> = ({
     };
     
     const fallbackTimezone = offsetToTimezone[h] || 'Europe/Moscow';
-    console.log('Using fallback timezone:', fallbackTimezone, 'for offset:', h);
     return fallbackTimezone;
   }, [user.timezone]);
 

@@ -18,33 +18,7 @@ export const supabase = hasSupabaseCredentials
     })
   : null;
 
-// Log connection status for debugging
-if (typeof window !== 'undefined') {
-  if (hasSupabaseCredentials) {
-    console.log('✅ Supabase connected successfully');
-    console.log('📊 Database URL:', supabaseUrl);
-    console.log('🔑 Anon Key (first 20 chars):', supabaseAnonKey?.substring(0, 20) + '...');
-  } else {
-    console.log('❌ Supabase credentials not found');
-    console.log('🔧 Running in demo mode with local data');
-    console.log('📝 To connect to Supabase:');
-    console.log('   1. Get URL and anon key from Supabase Dashboard → Settings → API');
-    console.log('   2. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to environment variables');
-    console.log('   3. For Netlify: Site settings → Environment variables');
-  }
-  
-  // Test Supabase connection
-  if (supabase) {
-    supabase.from('users').select('count', { count: 'exact', head: true })
-      .then(({ count, error }) => {
-        if (error) {
-          console.error('❌ Supabase connection test failed:', error);
-        } else {
-          console.log('✅ Supabase connection test successful. Users count:', count);
-        }
-      });
-  }
-}
+// Supabase connection status
 
 // Database types
 export interface Database {

@@ -84,18 +84,14 @@ export const useTimeSlots = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading time slots from Supabase...');
       const { data, error } = await supabase
         .from('time_slots')
         .select('*')
         .order('date', { ascending: false });
 
       if (error) {
-        console.error('Supabase error loading time slots:', error);
         throw error;
       }
-
-      console.log('Raw time slots data from Supabase:', data);
 
       const formattedSlots: TimeSlot[] = data.map(dbSlot => ({
         id: dbSlot.id,
@@ -133,14 +129,8 @@ export const useTimeSlots = () => {
         deadlineReason: dbSlot.deadline_reason,
       }));
 
-      console.log('Formatted time slots:', formattedSlots);
       setTimeSlots(formattedSlots);
-      
-      if (formattedSlots.length === 0) {
-        console.log('No time slots found, will create demo data when users and projects are available');
-      }
     } catch (error) {
-      console.error('Error loading time slots:', error);
       loadDemoTimeSlots();
     }
   };
@@ -197,7 +187,6 @@ export const useTimeSlots = () => {
 
       await loadTimeSlots();
     } catch (error) {
-      console.error('Error adding time slot:', error);
       throw error;
     }
   };
@@ -253,7 +242,6 @@ export const useTimeSlots = () => {
 
       await loadTimeSlots();
     } catch (error) {
-      console.error('Error updating time slot:', error);
       throw error;
     }
   };
@@ -275,7 +263,6 @@ export const useTimeSlots = () => {
 
       await loadTimeSlots();
     } catch (error) {
-      console.error('Error deleting time slot:', error);
       throw error;
     }
   };

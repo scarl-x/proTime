@@ -111,14 +111,12 @@ export const useTasks = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading tasks from Supabase...');
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error loading tasks:', error);
         throw error;
       }
 
@@ -146,7 +144,6 @@ export const useTasks = () => {
 
       setTasks(formattedTasks);
     } catch (error) {
-      console.error('Error loading tasks:', error);
       loadDemoTasks();
     }
   };
@@ -155,14 +152,12 @@ export const useTasks = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading task assignments from Supabase...');
       const { data, error } = await supabase
         .from('task_assignments')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error loading task assignments:', error);
         throw error;
       }
 
@@ -182,7 +177,7 @@ export const useTasks = () => {
 
       setTaskAssignments(formattedAssignments);
     } catch (error) {
-      console.error('Error loading task assignments:', error);
+      // Ошибка загрузки назначений задач
     }
   };
 
@@ -261,7 +256,6 @@ export const useTasks = () => {
 
       await loadTasks();
     } catch (error) {
-      console.error('Error updating task:', error);
       throw error;
     }
   };

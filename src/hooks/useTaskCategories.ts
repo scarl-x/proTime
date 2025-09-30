@@ -109,7 +109,6 @@ export const useTaskCategories = () => {
         await createDemoCategoriesInSupabase();
       }
     } catch (error) {
-      console.error('Error loading task categories:', error);
       loadDemoCategories();
     }
   };
@@ -129,7 +128,6 @@ export const useTaskCategories = () => {
         .single();
 
       if (!adminUser) {
-        console.log('No admin user found, skipping demo categories creation');
         return;
       }
 
@@ -182,7 +180,6 @@ export const useTaskCategories = () => {
         .select();
 
       if (error) {
-        console.error('Error creating demo categories:', error);
         loadDemoCategories();
         return;
       }
@@ -227,7 +224,6 @@ export const useTaskCategories = () => {
       await loadCategories();
       return data;
     } catch (error) {
-      console.error('Error creating task category:', error);
       throw error;
     }
   };

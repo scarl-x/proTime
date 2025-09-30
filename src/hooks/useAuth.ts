@@ -130,19 +130,14 @@ export const useAuth = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading users from Supabase...');
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Supabase error loading users:', error);
         throw error;
       }
-
-      console.log('Raw users data from Supabase:', data);
-      console.log('Timezone fields in data:', data.map(u => ({ id: u.id, name: u.name, timezone: u.timezone })));
 
       const formattedUsers: User[] = data.map(dbUser => ({
         id: dbUser.id,
@@ -158,18 +153,14 @@ export const useAuth = () => {
         timezone: dbUser.timezone ?? undefined,
       }));
 
-      console.log('Formatted users:', formattedUsers);
       setUsers(formattedUsers);
       
       // Если нет пользователей в базе, добавляем демо-пользователей
       if (formattedUsers.length === 0) {
-        console.log('No users found in database, loading demo users');
         await createDemoUsersInSupabase();
       }
     } catch (error) {
-      console.error('Error loading users:', error);
       // В случае ошибки загружаем демо-пользователей
-      console.log('Error loading from database, falling back to demo users');
       loadDemoUsers();
     } finally {
       setIsLoading(false);
@@ -180,19 +171,14 @@ export const useAuth = () => {
     if (!supabase) return loadDemoUsersAndReturn();
     
     try {
-      console.log('Loading users from Supabase...');
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Supabase error loading users:', error);
         throw error;
       }
-
-      console.log('Raw users data from Supabase:', data);
-      console.log('Timezone fields in data:', data.map(u => ({ id: u.id, name: u.name, timezone: u.timezone })));
 
       const formattedUsers: User[] = data.map(dbUser => ({
         id: dbUser.id,
@@ -208,21 +194,17 @@ export const useAuth = () => {
         timezone: dbUser.timezone ?? undefined,
       }));
 
-      console.log('Formatted users:', formattedUsers);
       setUsers(formattedUsers);
       
       // Если нет пользователей в базе, добавляем демо-пользователей
       if (formattedUsers.length === 0) {
-        console.log('No users found in database, loading demo users');
         await createDemoUsersInSupabase();
         return await loadUsersAndReturn(); // Рекурсивно загружаем после создания демо-пользователей
       }
       
       return formattedUsers;
     } catch (error) {
-      console.error('Error loading users:', error);
       // В случае ошибки загружаем демо-пользователей
-      console.log('Error loading from database, falling back to demo users');
       return loadDemoUsersAndReturn();
     }
   };
@@ -231,7 +213,6 @@ export const useAuth = () => {
     if (!supabase) return;
     
     try {
-      console.log('Creating demo users in Supabase...');
       const demoUsers = [
         {
           name: 'Админ Системы',
@@ -269,15 +250,12 @@ export const useAuth = () => {
         .select();
 
       if (error) {
-        console.error('Error creating demo users:', error);
         loadDemoUsers();
         return;
       }
 
-      console.log('Demo users created successfully:', data);
       await loadUsers();
     } catch (error) {
-      console.error('Error in createDemoUsersInSupabase:', error);
       loadDemoUsers();
     }
   };

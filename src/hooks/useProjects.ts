@@ -57,18 +57,14 @@ export const useProjects = () => {
     if (!supabase) return;
     
     try {
-      console.log('Loading projects from Supabase...');
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Supabase error loading projects:', error);
         throw error;
       }
-
-      console.log('Raw projects data from Supabase:', data);
 
       const formattedProjects: Project[] = data.map(dbProject => ({
         id: dbProject.id,
@@ -81,7 +77,6 @@ export const useProjects = () => {
         teamMembers: dbProject.team_members || [],
       }));
 
-      console.log('Formatted projects:', formattedProjects);
       setProjects(formattedProjects);
       
       // По умолчанию показываем все проекты
@@ -90,7 +85,6 @@ export const useProjects = () => {
       }
       
       if (formattedProjects.length === 0) {
-        console.log('No projects found, creating demo projects...');
         await createDemoProjectsInSupabase();
       }
     } catch (error) {
@@ -103,7 +97,6 @@ export const useProjects = () => {
     if (!supabase) return;
     
     try {
-      console.log('Creating demo projects in Supabase...');
       const demoProjects = [
         {
           name: 'Веб-приложение CRM',
@@ -134,15 +127,12 @@ export const useProjects = () => {
         .select();
 
       if (error) {
-        console.error('Error creating demo projects:', error);
         loadDemoProjects();
         return;
       }
 
-      console.log('Demo projects created successfully:', data);
       await loadProjects();
     } catch (error) {
-      console.error('Error in createDemoProjectsInSupabase:', error);
       loadDemoProjects();
     }
   };
