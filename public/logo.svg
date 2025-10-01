@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Цвет фирменного знака -->
+  <g stroke="#C79A6A" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Внешняя звезда -->
+    <path d="M256 20 336 100h116v116l80 80-80 80v116H336l-80 80-80-80H60V376L-20 296l80-80V100h116z" transform="translate(20 20) scale(0.875)"/>
+    <!-- Средний ромб -->
+    <path d="M256 96 416 256 256 416 96 256Z"/>
+    <!-- Диагонали -->
+    <path d="M144 144 368 368"/>
+    <path d="M368 144 144 368"/>
+    <!-- Центральный узор с точками -->
+    <circle cx="256" cy="256" r="18" fill="#C79A6A" stroke="#C79A6A"/>
+    <path d="M256 196v40"/>
+    <path d="M256 276v40"/>
+    <path d="M196 256h40"/>
+    <path d="M276 256h40"/>
+    <circle cx="256" cy="196" r="14" fill="#C79A6A" stroke="#C79A6A"/>
+    <circle cx="256" cy="316" r="14" fill="#C79A6A" stroke="#C79A6A"/>
+    <circle cx="196" cy="256" r="14" fill="#C79A6A" stroke="#C79A6A"/>
+    <circle cx="316" cy="256" r="14" fill="#C79A6A" stroke="#C79A6A"/>
+  </g>
+</svg>
+

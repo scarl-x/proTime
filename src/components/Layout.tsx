@@ -3,6 +3,7 @@ import { supabase, hasSupabaseCredentials } from '../lib/supabase';
 import { DisplayTimezoneContext } from '../utils/timezoneContext';
 import { formatTimeForDisplay } from '../utils/timezone';
 import { Clock, Users, Calendar, BarChart3, LogOut, Settings, UserPlus, Folder, TrendingUp, CalendarCheck, Plane, Tag, MessageCircle, User as UserIcon, ListTodo, Send } from 'lucide-react';
+import logoUrl from '/brand/proyavlenie_03.png';
 import { User } from '../types';
 import { NotificationCenter } from './Notifications/NotificationCenter';
 import { TimezoneSelector } from './TimezoneSelector';
@@ -259,14 +260,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <Clock className="h-8 w-8 text-indigo-600" />
-              <div className="hidden sm:block">
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Проявление - Учет времени</h1>
-                <p className="text-xs text-gray-500 hidden md:block">Система учета времени</p>
-              </div>
-              <div className="sm:hidden">
-                <h1 className="text-lg font-bold text-gray-900">Проявление</h1>
-              </div>
+              <img src={logoUrl} alt="Проявление" className="h-12 w-auto" />
             </div>
 
             <div className="flex items-center space-x-2 sm:space-x-4">

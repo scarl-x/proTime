@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn } from 'lucide-react';
 import { hasSupabaseCredentials } from '../lib/supabase';
+import logoUrl from '/brand/proyavlenie_01.png';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
@@ -29,16 +30,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <LogIn className="h-12 w-12 text-indigo-600" />
-              <div className="text-left">
-                <h1 className="text-2xl font-bold text-gray-900">Проявление</h1>
-                <p className="text-sm text-gray-600">Учет времени</p>
-              </div>
+            <div className="flex items-center justify-center mb-6">
+              <img src={logoUrl} alt="Проявление" className="h-32 w-auto" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">
-              Добро пожаловать в Проявление
-            </h2>
             <p className="text-gray-600 mt-2">
               Войдите в систему учета времени
             </p>
