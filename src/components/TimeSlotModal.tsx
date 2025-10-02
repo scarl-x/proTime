@@ -207,7 +207,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       });
       setFormData({
         employeeId: currentUser.id,
-        projectId: projects[0]?.id || '',
+        projectId: '',
         date: baseDate,
         startTime: '09:00',
         endTime: '17:00',
@@ -242,6 +242,18 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Проверяем, что есть доступные проекты
+    if (availableProjects.length === 0) {
+      alert('У вас нет доступных проектов. Обратитесь к администратору.');
+      return;
+    }
+    
+    // Проверяем, что проект выбран
+    if (!formData.projectId) {
+      alert('Пожалуйста, выберите проект');
+      return;
+    }
     
     // Конвертируем локальное время автора в UTC+0 для хранения
     const utcData = convertLocalToUtc(formData.date, formData.startTime, formData.endTime, effectiveZone);
@@ -555,6 +567,11 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     ? employees // Админы могут назначать задачи всем пользователям (включая других админов и себя)
     : [currentUser]; // Обычные сотрудники могут ставить задачи только себе
 
+  // Фильтруем проекты по участию пользователя
+  const availableProjects = currentUser.role === 'admin' 
+    ? projects // Админы видят все проекты
+    : projects.filter(project => project.teamMembers.includes(currentUser.id)); // Сотрудники видят только проекты, в которых участвуют
+
   const isParentTask = slot?.parentTaskId === undefined && slot?.taskSequence === undefined;
   const isChildTask = slot?.parentTaskId !== undefined;
   const totalSplitHours = splitHoursPerDay.reduce((sum, hours) => sum + hours, 0);
@@ -792,20 +809,27 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
                   <Tag className="h-4 w-4" />
                   <span>Проект</span>
+                  <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.projectId}
-                  onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  required
-                >
-                  <option value="">Выберите проект</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
+                {availableProjects.length === 0 ? (
+                  <div className="w-full px-3 py-2 border border-red-300 rounded-lg bg-red-50 text-sm text-red-600">
+                    У вас нет доступных проектов. Обратитесь к администратору.
+                  </div>
+                ) : (
+                  <select
+                    value={formData.projectId}
+                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    required
+                  >
+                    <option value="">Выберите проект</option>
+                    {availableProjects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Date */}
@@ -1325,6 +1349,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
               <button
                 type="submit"
                 disabled={
+                  availableProjects.length === 0 ||
                   (showSplitOptions && totalSplitHours !== formData.plannedHours) ||
                   (plannedHoursError !== '') ||
                   (isEditingSplitTask && !canEditPlannedHours && totalSplitHours !== getOriginalPlannedHours())
