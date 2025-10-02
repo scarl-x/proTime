@@ -18,6 +18,8 @@ interface NotificationCenterProps {
   employees: User[];
   projects: Project[];
   currentUser: User;
+  onSlotClick?: (slot: TimeSlot) => void;
+  onTaskClick?: (task: any) => void;
 }
 
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({
@@ -25,6 +27,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   employees,
   projects,
   currentUser,
+  onSlotClick,
+  onTaskClick,
 }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -239,7 +243,14 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => {
+                      markAsRead(notification.id);
+                      // Обработка клика по уведомлению
+                      if (notification.type === 'overdue' && notification.employeeId) {
+                        const slot = timeSlots.find(s => s.employeeId === notification.employeeId && s.task === notification.message.split('"')[1]);
+                        if (slot && onSlotClick) onSlotClick(slot);
+                      }
+                    }}
                     className={`p-4 cursor-pointer hover:bg-gray-50 transition duration-200 ${
                       !notification.read ? 'bg-blue-50' : ''
                     }`}

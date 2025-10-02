@@ -147,6 +147,29 @@ function App() {
     setTimeout(() => setNotification(null), 5000);
   };
 
+  // Обработчик событий от NotificationCenter
+  React.useEffect(() => {
+    const handleSlotClickEvent = (event: CustomEvent) => {
+      setEditingSlot(event.detail);
+      setShowTimeSlotModal(true);
+    };
+    
+    const handleTaskClickEvent = (event: CustomEvent) => {
+      const task = event.detail;
+      const taskProject = projects.find(p => p.id === task.projectId);
+      setSelectedProjectForTasks(taskProject);
+      setSelectedTaskForDetail(task);
+    };
+    
+    window.addEventListener('slotClick', handleSlotClickEvent as EventListener);
+    window.addEventListener('taskClick', handleTaskClickEvent as EventListener);
+    
+    return () => {
+      window.removeEventListener('slotClick', handleSlotClickEvent as EventListener);
+      window.removeEventListener('taskClick', handleTaskClickEvent as EventListener);
+    };
+  }, [projects]);
+
   // Экран настроек дейликов находится в отдельном компоненте
 
   if (isLoading) {
@@ -975,6 +998,12 @@ function App() {
         tasks={tasks} 
         timeSlots={timeSlots}
         taskAssignments={taskAssignments}
+        onSlotClick={handleSlotClick}
+        onTaskClick={(task) => {
+          const taskProject = projects.find(p => p.id === task.projectId);
+          setSelectedProjectForTasks(taskProject);
+          setSelectedTaskForDetail(task);
+        }}
       />
 
       {/* Уведомления */}

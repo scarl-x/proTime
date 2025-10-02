@@ -288,6 +288,14 @@ export const Layout: React.FC<LayoutProps> = ({
                   employees={employees}
                   projects={projects}
                   currentUser={user}
+                  onSlotClick={(slot) => {
+                    // Эмитируем событие для App.tsx
+                    window.dispatchEvent(new CustomEvent('slotClick', { detail: slot }));
+                  }}
+                  onTaskClick={(task) => {
+                    // Эмитируем событие для App.tsx
+                    window.dispatchEvent(new CustomEvent('taskClick', { detail: task }));
+                  }}
                 />
                 <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200 hidden sm:block">
                   <Settings className="h-5 w-5" />

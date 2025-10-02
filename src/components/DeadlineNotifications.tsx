@@ -15,6 +15,8 @@ interface DeadlineNotificationsProps {
   timeSlots: TimeSlot[];
   taskAssignments: TaskAssignment[];
   onClose?: () => void;
+  onSlotClick?: (slot: TimeSlot) => void;
+  onTaskClick?: (task: Task) => void;
 }
 
 interface DeadlineItem {
@@ -32,7 +34,9 @@ export const DeadlineNotifications: React.FC<DeadlineNotificationsProps> = ({
   tasks,
   timeSlots,
   taskAssignments,
-  onClose
+  onClose,
+  onSlotClick,
+  onTaskClick
 }) => {
   const [deadlineItems, setDeadlineItems] = useState<DeadlineItem[]>([]);
   const [isVisible, setIsVisible] = useState(true);
@@ -168,7 +172,16 @@ export const DeadlineNotifications: React.FC<DeadlineNotificationsProps> = ({
           {deadlineItems.map((item) => (
             <div
               key={item.id}
-              className={`p-4 border-b border-gray-100 last:border-b-0 ${getStatusColor(item.status)}`}
+              className={`p-4 border-b border-gray-100 last:border-b-0 ${getStatusColor(item.status)} cursor-pointer hover:bg-gray-50`}
+              onClick={() => {
+                if (item.type === 'timeslot') {
+                  const slot = timeSlots.find(s => s.id === item.id.replace('slot-', ''));
+                  if (slot && onSlotClick) onSlotClick(slot);
+                } else if (item.type === 'task') {
+                  const task = tasks.find(t => t.id === item.id.replace('assignment-', ''));
+                  if (task && onTaskClick) onTaskClick(task);
+                }
+              }}
             >
               <div className="flex items-start space-x-3">
                 {getStatusIcon(item.status)}
