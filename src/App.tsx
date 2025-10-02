@@ -37,6 +37,7 @@ import { ProjectAnalytics } from './components/Reports/ProjectAnalytics';
 import { PerformanceAnalytics } from './components/Reports/PerformanceAnalytics';
 import { EmployeeList } from './components/EmployeeList';
 import { EmployeeDaySchedule } from './components/EmployeeSchedule/EmployeeDaySchedule';
+import { OverdueTasksList } from './components/EmployeeSchedule/OverdueTasksList';
 import { EmployeeBirthdayCards } from './components/EmployeeBirthdayCards';
 import { BacklogView } from './components/BacklogView';
 import { getWeekStart, getMonthName, formatDate } from './utils/dateUtils';
@@ -753,6 +754,24 @@ function App() {
             onBack={() => setActiveTab('calendar')}
             onSlotClick={handleSlotClick}
             onDateChange={setScheduleDate}
+          />
+        );
+
+      case 'my-overdue':
+        return (
+          <OverdueTasksList
+            employee={user}
+            timeSlots={getAllTimeSlots(bookings)}
+            projects={projects}
+            onSlotClick={handleSlotClick}
+            onComplete={(slot) => {
+              updateTimeSlot(slot.id, { ...slot, status: 'completed' as any });
+            }}
+            onPostpone={(slot, days) => {
+              const d = new Date(slot.deadline!);
+              d.setDate(d.getDate() + days);
+              updateTimeSlot(slot.id, { ...slot, deadline: d.toISOString().split('T')[0] });
+            }}
           />
         );
 

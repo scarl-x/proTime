@@ -178,6 +178,7 @@ export const Layout: React.FC<LayoutProps> = ({
       subTabs: [
         { id: 'my-schedule', label: 'Расписание', icon: Clock },
         { id: 'backlog', label: 'Нераспределенные задачи', icon: ListTodo },
+        { id: 'my-overdue', label: 'Просроченные', icon: TrendingUp },
       ]
     },
     { id: 'task-categories', label: 'Категории задач', icon: Tag },
