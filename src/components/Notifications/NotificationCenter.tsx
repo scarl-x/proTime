@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X, Clock, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { TimeSlot, User, Project } from '../../types';
+import { 
+  isDeadlineApproaching, 
+  isDeadlinePassed, 
+  getDaysUntilDeadline, 
+  getDaysOverdue,
+  isTimeSlotOverdue
+} from '../../utils/deadlineUtils';
 
 interface Notification {
   id: string;
-  type: 'deadline' | 'overdue' | 'completed' | 'info';
+  type: 'deadline' | 'overdue' | 'completed' | 'info' | 'approaching';
   title: string;
   message: string;
   timestamp: Date;
   read: boolean;
   projectId?: string;
   employeeId?: string;
+  slotId?: string;
+  taskId?: string;
 }
 
 interface NotificationCenterProps {
@@ -18,6 +27,8 @@ interface NotificationCenterProps {
   employees: User[];
   projects: Project[];
   currentUser: User;
+  tasks?: any[];
+  taskAssignments?: any[];
   onSlotClick?: (slot: TimeSlot) => void;
   onTaskClick?: (task: any) => void;
 }
@@ -27,6 +38,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   employees,
   projects,
   currentUser,
+  tasks = [],
+  taskAssignments = [],
   onSlotClick,
   onTaskClick,
 }) => {
@@ -36,7 +49,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   useEffect(() => {
     generateNotifications();
-  }, [timeSlots, currentUser]);
+  }, [timeSlots, currentUser, tasks, taskAssignments]);
 
   const generateNotifications = () => {
     const newNotifications: Notification[] = [];
@@ -148,6 +161,60 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       });
     }
 
+    // Добавляем уведомления о дедлайнах
+    // Проверяем назначения задач с дедлайнами (только для текущего пользователя)
+    taskAssignments
+      .filter(assignment => assignment.employeeId === currentUser.id)
+      .forEach(assignment => {
+        if (assignment.deadline) {
+          const isOverdue = isDeadlinePassed(assignment.deadline);
+          const isApproaching = isDeadlineApproaching(assignment.deadline);
+          
+          if (isOverdue || isApproaching) {
+            const task = tasks.find(t => t.id === assignment.taskId);
+            if (task) {
+              const project = projects.find(p => p.id === task.projectId);
+              newNotifications.push({
+                id: `deadline-assignment-${assignment.id}`,
+                type: isOverdue ? 'overdue' : 'approaching',
+                title: isOverdue ? 'Просроченная задача' : 'Приближается дедлайн',
+                message: `"${task.name}" в проекте "${project?.name || 'Неизвестный проект'}"`,
+                timestamp: new Date(assignment.deadline),
+                read: false,
+                projectId: task.projectId,
+                employeeId: assignment.employeeId,
+                taskId: task.id,
+              });
+            }
+          }
+        }
+      });
+
+    // Проверяем временные слоты с дедлайнами (только для текущего пользователя)
+    timeSlots
+      .filter(slot => slot.employeeId === currentUser.id)
+      .forEach(slot => {
+        if (slot.deadline && slot.status !== 'completed') {
+          const isOverdue = isTimeSlotOverdue(slot);
+          const isApproaching = isDeadlineApproaching(slot.deadline);
+          
+          if (isOverdue || isApproaching) {
+            const project = projects.find(p => p.id === slot.projectId);
+            newNotifications.push({
+              id: `deadline-slot-${slot.id}`,
+              type: isOverdue ? 'overdue' : 'approaching',
+              title: isOverdue ? 'Просроченная задача' : 'Приближается дедлайн',
+              message: `"${slot.task}" в проекте "${project?.name || 'Неизвестный проект'}"`,
+              timestamp: new Date(slot.deadline),
+              read: false,
+              projectId: slot.projectId,
+              employeeId: slot.employeeId,
+              slotId: slot.id,
+            });
+          }
+        }
+      });
+
     // Sort by timestamp (newest first)
     newNotifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     
@@ -177,6 +244,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'overdue':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      case 'approaching':
+        return <Clock className="h-5 w-5 text-orange-500" />;
       case 'completed':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'info':
@@ -192,6 +261,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return 'bg-yellow-50 border-yellow-200';
       case 'overdue':
         return 'bg-red-50 border-red-200';
+      case 'approaching':
+        return 'bg-orange-50 border-orange-200';
       case 'completed':
         return 'bg-green-50 border-green-200';
       case 'info':
@@ -246,7 +317,13 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     onClick={() => {
                       markAsRead(notification.id);
                       // Обработка клика по уведомлению
-                      if (notification.type === 'overdue' && notification.employeeId) {
+                      if (notification.slotId && onSlotClick) {
+                        const slot = timeSlots.find(s => s.id === notification.slotId);
+                        if (slot) onSlotClick(slot);
+                      } else if (notification.taskId && onTaskClick) {
+                        const task = tasks.find(t => t.id === notification.taskId);
+                        if (task) onTaskClick(task);
+                      } else if (notification.type === 'overdue' && notification.employeeId) {
                         const slot = timeSlots.find(s => s.employeeId === notification.employeeId && s.task === notification.message.split('"')[1]);
                         if (slot && onSlotClick) onSlotClick(slot);
                       }

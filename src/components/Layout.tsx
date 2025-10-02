@@ -17,6 +17,8 @@ interface LayoutProps {
   timeSlots?: any[];
   employees?: User[];
   projects?: any[];
+  tasks?: any[];
+  taskAssignments?: any[];
   updateTimezone?: (timezone: string) => Promise<void>;
 }
 
@@ -42,6 +44,8 @@ export const Layout: React.FC<LayoutProps> = ({
   timeSlots = [],
   employees = [],
   projects = [],
+  tasks = [],
+  taskAssignments = [],
   updateTimezone,
 }) => {
   const [localTime, setLocalTime] = useState<string>('');
@@ -288,6 +292,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   employees={employees}
                   projects={projects}
                   currentUser={user}
+                  tasks={tasks}
+                  taskAssignments={taskAssignments}
                   onSlotClick={(slot) => {
                     // Эмитируем событие для App.tsx
                     window.dispatchEvent(new CustomEvent('slotClick', { detail: slot }));

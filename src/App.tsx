@@ -885,6 +885,8 @@ function App() {
       timeSlots={getAllTimeSlots(bookings)}
       employees={allUsers}
       projects={projects}
+      tasks={tasks}
+      taskAssignments={taskAssignments}
       updateTimezone={updateTimezone}
     >
       {renderContent()}
@@ -993,18 +995,6 @@ function App() {
         </div>
       )}
 
-      {/* Уведомления о дедлайнах */}
-      <DeadlineNotifications 
-        tasks={tasks} 
-        timeSlots={timeSlots}
-        taskAssignments={taskAssignments}
-        onSlotClick={handleSlotClick}
-        onTaskClick={(task) => {
-          const taskProject = projects.find(p => p.id === task.projectId);
-          setSelectedProjectForTasks(taskProject);
-          setSelectedTaskForDetail(task);
-        }}
-      />
 
       {/* Уведомления */}
       {notification && (

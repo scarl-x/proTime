@@ -14,6 +14,7 @@ interface DeadlineNotificationsProps {
   tasks: Task[];
   timeSlots: TimeSlot[];
   taskAssignments: TaskAssignment[];
+  currentUser: any;
   onClose?: () => void;
   onSlotClick?: (slot: TimeSlot) => void;
   onTaskClick?: (task: Task) => void;
@@ -34,6 +35,7 @@ export const DeadlineNotifications: React.FC<DeadlineNotificationsProps> = ({
   tasks,
   timeSlots,
   taskAssignments,
+  currentUser,
   onClose,
   onSlotClick,
   onTaskClick
@@ -44,49 +46,53 @@ export const DeadlineNotifications: React.FC<DeadlineNotificationsProps> = ({
   useEffect(() => {
     const items: DeadlineItem[] = [];
 
-    // Проверяем назначения задач с дедлайнами
-    taskAssignments.forEach(assignment => {
-      if (assignment.deadline) {
-        const isOverdue = isDeadlinePassed(assignment.deadline);
-        const isApproaching = isDeadlineApproaching(assignment.deadline);
-        
-        if (isOverdue || isApproaching) {
-          const task = tasks.find(t => t.id === assignment.taskId);
-          if (task) {
+    // Проверяем назначения задач с дедлайнами (только для текущего пользователя)
+    taskAssignments
+      .filter(assignment => assignment.employeeId === currentUser.id)
+      .forEach(assignment => {
+        if (assignment.deadline) {
+          const isOverdue = isDeadlinePassed(assignment.deadline);
+          const isApproaching = isDeadlineApproaching(assignment.deadline);
+          
+          if (isOverdue || isApproaching) {
+            const task = tasks.find(t => t.id === assignment.taskId);
+            if (task) {
+              items.push({
+                id: `assignment-${assignment.id}`,
+                type: 'task',
+                title: task.name,
+                deadline: assignment.deadline,
+                status: isOverdue ? 'overdue' : 'approaching',
+                daysLeft: isOverdue ? getDaysOverdue(assignment.deadline) : getDaysUntilDeadline(assignment.deadline),
+                priority: assignment.priority,
+                deadlineType: assignment.deadlineType,
+              });
+            }
+          }
+        }
+      });
+
+    // Проверяем временные слоты с дедлайнами (только для текущего пользователя)
+    timeSlots
+      .filter(slot => slot.employeeId === currentUser.id)
+      .forEach(slot => {
+        if (slot.deadline && slot.status !== 'completed') {
+          const isOverdue = isTimeSlotOverdue(slot);
+          const isApproaching = isDeadlineApproaching(slot.deadline);
+          
+          if (isOverdue || isApproaching) {
             items.push({
-              id: `assignment-${assignment.id}`,
-              type: 'task',
-              title: task.name,
-              deadline: assignment.deadline,
+              id: `slot-${slot.id}`,
+              type: 'timeslot',
+              title: slot.task,
+              deadline: slot.deadline,
               status: isOverdue ? 'overdue' : 'approaching',
-              daysLeft: isOverdue ? getDaysOverdue(assignment.deadline) : getDaysUntilDeadline(assignment.deadline),
-              priority: assignment.priority,
-              deadlineType: assignment.deadlineType,
+              daysLeft: isOverdue ? getDaysOverdue(slot.deadline) : getDaysUntilDeadline(slot.deadline),
+              deadlineType: slot.deadlineType,
             });
           }
         }
-      }
-    });
-
-    // Проверяем временные слоты с дедлайнами
-    timeSlots.forEach(slot => {
-      if (slot.deadline && slot.status !== 'completed') {
-        const isOverdue = isTimeSlotOverdue(slot);
-        const isApproaching = isDeadlineApproaching(slot.deadline);
-        
-        if (isOverdue || isApproaching) {
-          items.push({
-            id: `slot-${slot.id}`,
-            type: 'timeslot',
-            title: slot.task,
-            deadline: slot.deadline,
-            status: isOverdue ? 'overdue' : 'approaching',
-            daysLeft: isOverdue ? getDaysOverdue(slot.deadline) : getDaysUntilDeadline(slot.deadline),
-            deadlineType: slot.deadlineType,
-          });
-        }
-      }
-    });
+      });
 
     // Сортируем по приоритету: просроченные, затем приближающиеся
     items.sort((a, b) => {
@@ -100,7 +106,7 @@ export const DeadlineNotifications: React.FC<DeadlineNotificationsProps> = ({
     });
 
     setDeadlineItems(items);
-  }, [tasks, timeSlots, taskAssignments]);
+  }, [tasks, timeSlots, taskAssignments, currentUser.id]);
 
   const handleClose = () => {
     setIsVisible(false);
