@@ -247,10 +247,13 @@ export const useTimeSlots = () => {
   };
 
   const deleteTimeSlot = async (id: string) => {
+    // Находим слот перед удалением, чтобы вернуть информацию о связанной задаче
+    const slotToDelete = timeSlots.find(slot => slot.id === id);
+    
     if (!supabase) {
       // Demo mode - remove from local state
       setTimeSlots(prev => prev.filter(slot => slot.id !== id));
-      return;
+      return slotToDelete; // Возвращаем информацию о слоте для удаления связанной задачи
     }
 
     try {
@@ -262,6 +265,7 @@ export const useTimeSlots = () => {
       if (error) throw error;
 
       await loadTimeSlots();
+      return slotToDelete; // Возвращаем информацию о слоте для удаления связанной задачи
     } catch (error) {
       throw error;
     }

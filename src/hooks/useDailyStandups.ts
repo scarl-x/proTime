@@ -87,7 +87,11 @@ export const useDailyStandups = () => {
 
       let deleted = 0;
       for (const m of matches) {
-        await deleteTimeSlot(m.id);
+        const deletedSlot = await deleteTimeSlot(m.id);
+        // Дейлики обычно не имеют связанных задач, но на всякий случай проверим
+        if (deletedSlot && (deletedSlot as any).taskId) {
+          console.warn('Daily standup slot had associated task, but task deletion not implemented in this context');
+        }
         deleted += 1;
       }
       return { deleted };

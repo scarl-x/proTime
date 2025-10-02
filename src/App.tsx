@@ -269,8 +269,10 @@ function App() {
           
           // Обновляем временной слот с taskId
           const updatedSlot = { ...slotData, taskId: newTask.id };
-          // Здесь нужно обновить слот, но у нас нет функции для этого в useTimeSlots
-          // Пока что оставляем как есть, taskId будет добавлен при следующем обновлении
+          // Обновляем слот с taskId для связи с задачей
+          if ('id' in slotData) {
+            updateTimeSlot(slotData.id, updatedSlot);
+          }
           
         } catch (error) {
           console.error('Error creating task from time slot:', error);
@@ -899,7 +901,18 @@ function App() {
           setSelectedTask(null);
         }}
         onSave={handleSaveSlot}
-        onDelete={deleteTimeSlot}
+        onDelete={async (id: string) => {
+          const deletedSlot = await deleteTimeSlot(id);
+          // Если у слота есть связанная задача, удаляем её тоже
+          if (deletedSlot && (deletedSlot as any).taskId) {
+            try {
+              await deleteTask((deletedSlot as any).taskId);
+            } catch (error) {
+              console.error('Error deleting associated task:', error);
+              // Не показываем ошибку пользователю, так как слот уже удален
+            }
+          }
+        }}
         slot={editingSlot ?? undefined}
         employees={allUsers}
         currentUser={user}
