@@ -13,6 +13,7 @@ interface DayViewProps {
   timeSlots: TimeSlot[];
   onSlotClick: (slot: TimeSlot) => void;
   currentUser: User;
+  projects?: any[];
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -20,6 +21,7 @@ export const DayView: React.FC<DayViewProps> = ({
   timeSlots,
   onSlotClick,
   currentUser,
+  projects = [],
 }) => {
   const START_HOUR = 0; // 00:00
   const END_HOUR = 24; // 24:00 (exclusive)
@@ -49,6 +51,13 @@ export const DayView: React.FC<DayViewProps> = ({
     })();
     return zone;
   }, [ctxZone, currentUser]);
+
+  // Функция для получения названия проекта
+  const getProjectName = (projectId?: string) => {
+    if (!projectId) return '';
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || '';
+  };
 
   const daySlots = useMemo(() => {
     return timeSlots.filter(slot => {
@@ -141,6 +150,11 @@ export const DayView: React.FC<DayViewProps> = ({
                     {slot.parentTaskId && <Split className="h-3 w-3 flex-shrink-0" />}
                     {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-3 w-3 flex-shrink-0" />}
                   </div>
+                  {slot.projectId && getProjectName(slot.projectId) && (
+                    <div className="text-xs text-gray-600 mb-1 truncate" title={getProjectName(slot.projectId)}>
+                      {getProjectName(slot.projectId)}
+                    </div>
+                  )}
                   {/* Время выводим в компактной строке ниже, чтобы не дублировать */}
                 </div>
                 <div className="flex flex-col items-end text-right text-[10px] sm:text-xs flex-shrink-0 space-y-1" />

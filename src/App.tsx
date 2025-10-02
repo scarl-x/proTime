@@ -445,6 +445,7 @@ function App() {
             timeSlots={filteredSlots}
             onSlotClick={handleSlotClick}
             currentUser={user}
+            projects={projects}
           />
         );
       case 'week':
@@ -454,6 +455,7 @@ function App() {
             timeSlots={filteredSlots}
             onSlotClick={handleSlotClick}
             currentUser={user}
+            projects={projects}
           />
         );
       case 'month':
@@ -465,6 +467,7 @@ function App() {
               setCurrentDate(new Date(date));
               setCalendarView('day');
             }}
+            projects={projects}
           />
         );
       default:

@@ -9,17 +9,26 @@ interface MonthViewProps {
   currentDate: Date;
   timeSlots: TimeSlot[];
   onDateClick: (date: string) => void;
+  projects?: any[];
 }
 
 export const MonthView: React.FC<MonthViewProps> = ({
   currentDate,
   timeSlots,
   onDateClick,
+  projects = [],
 }) => {
   const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
   const startDate = new Date(monthStart);
   startDate.setDate(startDate.getDate() - monthStart.getDay() + 1); // Start from Monday
+
+  // Функция для получения названия проекта
+  const getProjectName = (projectId?: string) => {
+    if (!projectId) return '';
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || '';
+  };
 
   const days = [];
   const date = new Date(startDate);
@@ -115,6 +124,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
                         {slot.parentTaskId && <Split className="h-2 w-2 flex-shrink-0" />}
                         {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-2 w-2 flex-shrink-0" />}
                       </div>
+                      {slot.projectId && getProjectName(slot.projectId) && (
+                        <div className="text-xs text-gray-600 truncate" title={getProjectName(slot.projectId)}>
+                          {getProjectName(slot.projectId)}
+                        </div>
+                      )}
                       {slot.deadline && (
                         <div className={`mt-0.5 text-[10px] ${isTimeSlotOverdue(slot) ? 'text-red-600' : 'text-gray-700'}`}>
                           Дедл.: {formatDate(slot.deadline)}

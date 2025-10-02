@@ -12,6 +12,7 @@ interface WeekViewProps {
   timeSlots: TimeSlot[];
   onSlotClick: (slot: TimeSlot) => void;
   currentUser: User;
+  projects?: any[];
 }
 
 export const WeekView: React.FC<WeekViewProps> = ({
@@ -19,6 +20,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
   timeSlots,
   onSlotClick,
   currentUser,
+  projects = [],
 }) => {
   const weekDates = getWeekDates(weekStart);
   const START_HOUR = 0;
@@ -49,6 +51,13 @@ export const WeekView: React.FC<WeekViewProps> = ({
         return slot.date === date;
       }
     });
+  };
+
+  // Функция для получения названия проекта
+  const getProjectName = (projectId?: string) => {
+    if (!projectId) return '';
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || '';
   };
 
   const getSlotStyle = (slot: TimeSlot) => {
@@ -144,6 +153,11 @@ export const WeekView: React.FC<WeekViewProps> = ({
                       {slot.parentTaskId && <Split className="h-3 w-3 flex-shrink-0" />}
                       {(slot.isRecurring || slot.parentRecurringId) && <Repeat className="h-3 w-3 flex-shrink-0" />}
                     </div>
+                    {slot.projectId && getProjectName(slot.projectId) && (
+                      <div className="text-xs text-gray-600 truncate" title={getProjectName(slot.projectId)}>
+                        {getProjectName(slot.projectId)}
+                      </div>
+                    )}
                     <div className="text-xs mt-1 hidden sm:block">
                       {converted.startTime} - {converted.endTime}
                     </div>
