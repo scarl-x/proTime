@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Clock, FileText, Tag } from 'lucide-react';
+import { X, DollarSign, Clock, FileText, Tag, Zap } from 'lucide-react';
 import { Task, TaskCategory } from '../../types';
 
 interface TaskModalProps {
