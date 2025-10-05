@@ -1,0 +1,8 @@
+[
+  {"id":"ea26aa95-b5fb-403b-b218-e9f3deec9878","employee_id":"33f3b0ac-60ea-4d41-8f4e-d81fcb45d433","type":"vacation","start_date":"2025-10-27","end_date":"2025-11-02","days_count":7,"reason":"неделька ежегодного отпуска","status":"approved","approved_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","approved_at":"2025-09-22 11:34:39.787+00","notes":"","created_at":"2025-09-22 11:12:00.377428+00","updated_at":"2025-09-22 11:34:40.097555+00","worked":null},
+  {"id":"92148e07-9ede-4300-a131-e7bf46e23343","employee_id":"43d9b4e2-255d-41d3-8bce-4b59332ee697","type":"compensatory_leave","start_date":"2025-09-23","end_date":"2025-09-23","days_count":1,"reason":"Проведение плановой операции. Отработка отгула - 27.09.2025","status":"approved","approved_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","approved_at":"2025-09-24 15:12:15.97+00","notes":"","created_at":"2025-09-24 11:52:26.278306+00","updated_at":"2025-09-30 16:55:14.489165+00","worked":true},
+  {"id":"666c0972-dd84-4077-8ef2-8d434f1d8528","employee_id":"46f9b199-11a1-460e-b285-f3ca3b11bd3e","type":"vacation","start_date":"2025-11-17","end_date":"2025-11-27","days_count":11,"reason":"Ухажу","status":"pending","approved_by":null,"approved_at":null,"notes":"","created_at":"2025-09-24 15:10:38.573299+00","updated_at":"2025-09-24 15:10:38.573299+00","worked":null},
+  {"id":"d0f21c3f-ae37-4637-a594-33adb1d62414","employee_id":"9d6f7300-cca0-41a2-84c8-81f0eb490a58","type":"compensatory_leave","start_date":"2025-10-03","end_date":"2025-10-03","days_count":1,"reason":"я ухажу","status":"approved","approved_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","approved_at":"2025-10-03 09:48:06.649+00","notes":"","created_at":"2025-10-03 09:47:51.630431+00","updated_at":"2025-10-03 09:48:12.486637+00","worked":true}
+]
+
+

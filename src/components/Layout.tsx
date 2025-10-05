@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { hasApiConnection } from '../lib/api';
 import { DisplayTimezoneContext } from '../utils/timezoneContext';
 import { formatTimeForDisplay } from '../utils/timezone';
 import { Clock, Users, Calendar, BarChart3, LogOut, Settings, UserPlus, Folder, TrendingUp, CalendarCheck, Plane, Tag, MessageCircle, User as UserIcon, ListTodo, Send } from 'lucide-react';

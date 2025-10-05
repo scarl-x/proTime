@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LogIn } from 'lucide-react';
-import { hasSupabaseCredentials } from '../lib/supabase';
+import { hasApiConnection } from '../lib/api';
 import logoUrl from '/brand/proyavlenie_01.png';
 
 interface LoginProps {
@@ -86,9 +86,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-800">
-                {hasSupabaseCredentials ? (
+                {hasApiConnection ? (
                   <>
-                    <strong>База данных подключена:</strong> Все данные сохраняются в Supabase.
+                    <strong>База данных подключена:</strong> Все данные сохраняются в базе данных.
                   </>
                 ) : (
                   <>
@@ -113,7 +113,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </button>
             </div>
             
-            {hasSupabaseCredentials && (
+            {hasApiConnection && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-xs text-green-800">
                   <strong>Примечание:</strong> При первом входе система создаст демо-пользователей в базе данных.

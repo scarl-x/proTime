@@ -1,0 +1,12 @@
+[
+  {"id":"82a53edf-35fa-45f2-9d88-6522151628af","name":"Тестирование","description":"Написание и выполнение тестов","default_hours":"8.00","default_hourly_rate":"3000.00","color":"#10B981","is_active":true,"created_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","created_at":"2025-09-21 22:55:06.713018+00"},
+  {"id":"65715595-d5fd-40d4-89e1-5fcec4e87824","name":"Код-ревью","description":"Проверка и ревью кода коллег","default_hours":"4.00","default_hourly_rate":"3500.00","color":"#8B5CF6","is_active":true,"created_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","created_at":"2025-09-21 22:55:06.713018+00"},
+  {"id":"08e1ffb6-00a7-4d5c-aba5-eb3927778b50","name":"Исправление багов","description":"Поиск и исправление ошибок","default_hours":"4.00","default_hourly_rate":"3500.00","color":"#EF4444","is_active":true,"created_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","created_at":"2025-09-21 22:55:06.713018+00"},
+  {"id":"749f3f15-1724-4f42-8e0d-5d7829adca20","name":"Разработка API","description":"Создание и разработка API endpoints","default_hours":"16.00","default_hourly_rate":"3500.00","color":"#3B82F6","is_active":false,"created_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","created_at":"2025-09-21 22:55:06.713018+00"},
+  {"id":"8f5889f2-68cc-47e2-9145-84a3c1444211","name":"Документация","description":"Написание технической документации","default_hours":"6.00","default_hourly_rate":"2500.00","color":"#F59E0B","is_active":false,"created_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","created_at":"2025-09-21 22:55:06.713018+00"},
+  {"id":"133b778b-c49c-4507-9b1c-f05f081d849b","name":"Проверка MR","description":"проверка mr сотрудника","default_hours":"0.50","default_hourly_rate":"3500.00","color":"#14B8A6","is_active":true,"created_by":"46f9b199-11a1-460e-b285-f3ca3b11bd3e","created_at":"2025-10-01 08:40:42.674387+00"},
+  {"id":"5a564f07-4d3f-4164-8736-bc159bb014b8","name":"Документирование","description":"","default_hours":"0.50","default_hourly_rate":"3500.00","color":"#06B6D4","is_active":true,"created_by":"8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec","created_at":"2025-10-03 08:26:30.61677+00"},
+  {"id":"2a236ca7-e71e-457d-96ef-a89ad69ee3e6","name":"Отдых","description":"Zzzzzz","default_hours":"8.00","default_hourly_rate":"0.00","color":"#F97316","is_active":true,"created_by":"e67f47f1-1413-416f-b6fd-c640886ef4fe","created_at":"2025-10-03 09:46:01.959377+00"}
+]
+
+

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { API_URL, hasApiConnection } from '../lib/api';
 import { 
   createJWTToken, 
   validateStoredToken, 
@@ -21,7 +21,7 @@ export const useAuth = () => {
       
       // Загружаем пользователей
       let loadedUsers: User[] = [];
-      if (hasSupabaseCredentials && supabase) {
+      if (hasApiConnection) {
         loadedUsers = await loadUsersAndReturn();
       } else {
         loadedUsers = loadDemoUsersAndReturn();
@@ -127,19 +127,18 @@ export const useAuth = () => {
   };
 
   const loadUsers = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) {
+      loadDemoUsers();
+      setIsLoading(false);
+      return;
+    }
     
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: true });
+      const res = await fetch(`${API_URL}/api/users`);
+      if (!res.ok) throw new Error('Failed to load users');
+      const data = await res.json();
 
-      if (error) {
-        throw error;
-      }
-
-      const formattedUsers: User[] = data.map(dbUser => ({
+      const formattedUsers: User[] = data.map((dbUser: any) => ({
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
@@ -154,13 +153,8 @@ export const useAuth = () => {
       }));
 
       setUsers(formattedUsers);
-      
-      // Если нет пользователей в базе, добавляем демо-пользователей
-      if (formattedUsers.length === 0) {
-        await createDemoUsersInSupabase();
-      }
     } catch (error) {
-      // В случае ошибки загружаем демо-пользователей
+      console.error('Error loading users:', error);
       loadDemoUsers();
     } finally {
       setIsLoading(false);
@@ -168,19 +162,17 @@ export const useAuth = () => {
   };
 
   const loadUsersAndReturn = async (): Promise<User[]> => {
-    if (!supabase) return loadDemoUsersAndReturn();
+    if (!hasApiConnection) {
+      return loadDemoUsersAndReturn();
+    }
     
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedUsers: User[] = data.map(dbUser => ({
+      const res = await fetch(`${API_URL}/api/users`);
+      if (!res.ok) throw new Error('Failed to load users');
+      const data = await res.json();
+      
+      const formattedUsers: User[] = data.map((dbUser: any) => ({
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
@@ -195,70 +187,13 @@ export const useAuth = () => {
       }));
 
       setUsers(formattedUsers);
-      
-      // Если нет пользователей в базе, добавляем демо-пользователей
-      if (formattedUsers.length === 0) {
-        await createDemoUsersInSupabase();
-        return await loadUsersAndReturn(); // Рекурсивно загружаем после создания демо-пользователей
-      }
-      
       return formattedUsers;
     } catch (error) {
-      // В случае ошибки загружаем демо-пользователей
+      console.error('Error loading users from REST API:', error);
       return loadDemoUsersAndReturn();
     }
   };
 
-  const createDemoUsersInSupabase = async () => {
-    if (!supabase) return;
-    
-    try {
-      const demoUsers = [
-        {
-          name: 'Админ Системы',
-          email: 'admin@company.com',
-          role: 'admin',
-          has_account: true,
-          password: 'password',
-          employment_date: '2024-01-15',
-        },
-        {
-          name: 'Иван Петров',
-          email: 'ivan@company.com',
-          role: 'employee',
-          position: 'developer',
-          has_account: true,
-          password: 'password',
-          birthday: '1988-07-22',
-          employment_date: '2024-03-01',
-        },
-        {
-          name: 'Мария Сидорова',
-          email: 'maria@company.com',
-          role: 'employee',
-          position: 'designer',
-          has_account: true,
-          password: 'password',
-          birthday: '1992-11-08',
-          employment_date: '2024-06-01',
-        },
-      ];
-
-      const { data, error } = await supabase
-        .from('users')
-        .insert(demoUsers)
-        .select();
-
-      if (error) {
-        loadDemoUsers();
-        return;
-      }
-
-      await loadUsers();
-    } catch (error) {
-      loadDemoUsers();
-    }
-  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     const foundUser = users.find(u => u.email === email && u.hasAccount);
@@ -288,7 +223,7 @@ export const useAuth = () => {
   };
 
   const addEmployee = async (employeeData: Omit<User, 'id'>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - add to local state
       const newEmployee: User = {
         ...employeeData,
@@ -298,34 +233,13 @@ export const useAuth = () => {
       return newEmployee;
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .insert({
-          name: employeeData.name,
-          email: employeeData.email,
-          role: 'employee',
-          position: employeeData.position,
-          has_account: false,
-          birthday: employeeData.birthday || null,
-          employment_date: employeeData.employmentDate || null,
-          termination_date: employeeData.terminationDate || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await loadUsers();
-      return data;
-    } catch (error) {
-      console.error('Error adding employee:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for adding employee
+    console.log('addEmployee not yet implemented for REST API');
+    return null;
   };
 
   const createEmployeeAccount = async (employeeId: string, password: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - update local state
       setUsers(prev => prev.map(user => 
         user.id === employeeId 
@@ -335,23 +249,12 @@ export const useAuth = () => {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ has_account: true, password })
-        .eq('id', employeeId);
-
-      if (error) throw error;
-
-      await loadUsers();
-    } catch (error) {
-      console.error('Error creating employee account:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for creating employee account
+    console.log('createEmployeeAccount not yet implemented for REST API');
   };
 
   const removeEmployeeAccount = async (employeeId: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - update local state
       setUsers(prev => prev.map(user => 
         user.id === employeeId 
@@ -361,23 +264,12 @@ export const useAuth = () => {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ has_account: false, password: null })
-        .eq('id', employeeId);
-
-      if (error) throw error;
-
-      await loadUsers();
-    } catch (error) {
-      console.error('Error removing employee account:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for removing employee account
+    console.log('removeEmployeeAccount not yet implemented for REST API');
   };
 
   const updateEmployee = async (id: string, updates: Partial<User>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - update local state
       setUsers(prev => prev.map(user => 
         user.id === id ? { ...user, ...updates } : user
@@ -385,60 +277,26 @@ export const useAuth = () => {
       return;
     }
 
-    try {
-      const payload: Record<string, unknown> = {};
-      if (updates.name !== undefined) payload.name = updates.name;
-      if (updates.email !== undefined) payload.email = updates.email;
-      if (updates.role !== undefined) payload.role = updates.role;
-      if (updates.position !== undefined) payload.position = updates.position;
-      if (updates.birthday !== undefined) payload.birthday = updates.birthday || null;
-      if (updates.employmentDate !== undefined) payload.employment_date = updates.employmentDate || null;
-      if (updates.terminationDate !== undefined) payload.termination_date = updates.terminationDate || null;
-
-      const { error } = await supabase
-        .from('users')
-        .update(payload)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadUsers();
-    } catch (error) {
-      console.error('Error updating employee:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for updating employee
+    console.log('updateEmployee not yet implemented for REST API');
   };
 
   const deleteEmployee = async (id: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - remove from local state
       setUsers(prev => prev.filter(user => user.id !== id));
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadUsers();
-    } catch (error) {
-      console.error('Error deleting employee:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for deleting employee
+    console.log('deleteEmployee not yet implemented for REST API');
   };
 
   const updateTimezone = async (timezone: string) => {
     try {
-      if (hasSupabaseCredentials && supabase && user) {
-        const { error } = await supabase
-          .from('users')
-          .update({ timezone })
-          .eq('id', user.id);
-        if (error) throw error;
+      if (hasApiConnection && user) {
+        // TODO: Implement REST API for updating timezone
+        console.log('updateTimezone not yet implemented for REST API');
         
         // Обновляем локальное состояние
         setUser(prev => prev ? { ...prev, timezone } : prev);

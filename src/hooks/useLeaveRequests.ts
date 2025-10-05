@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { LeaveRequest, LeaveBalance } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { API_URL, hasApiConnection } from '../lib/api';
+
 
 export const useLeaveRequests = () => {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
+    if (hasApiConnection) {
       loadLeaveRequests();
     } else {
       loadDemoLeaveRequests();
@@ -46,20 +47,17 @@ export const useLeaveRequests = () => {
   };
 
   const loadLeaveRequests = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) {
+      loadDemoLeaveRequests();
+      return;
+    }
     
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error loading leave requests:', error);
-        throw error;
-      }
-
-      const formattedRequests: LeaveRequest[] = data.map(dbRequest => ({
+      const res = await fetch(`${API_URL}/api/leave-requests`);
+      if (!res.ok) throw new Error('Failed to load leave requests');
+      const data = await res.json();
+      const formattedRequests: LeaveRequest[] = data.map((dbRequest: any) => ({
         id: dbRequest.id,
         employeeId: dbRequest.employee_id,
         type: dbRequest.type,
@@ -75,16 +73,14 @@ export const useLeaveRequests = () => {
         createdAt: dbRequest.created_at,
         updatedAt: dbRequest.updated_at,
       }));
-
       setLeaveRequests(formattedRequests);
     } catch (error) {
-      console.error('Error loading leave requests:', error);
       loadDemoLeaveRequests();
     }
   };
 
   const createLeaveRequest = async (request: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       const newRequest: LeaveRequest = {
         ...request,
@@ -96,37 +92,13 @@ export const useLeaveRequests = () => {
       return newRequest;
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .insert({
-          employee_id: request.employeeId,
-          type: request.type,
-          start_date: request.startDate,
-          end_date: request.endDate,
-          days_count: request.daysCount,
-          reason: request.reason,
-          status: request.status,
-          approved_by: request.approvedBy,
-          approved_at: request.approvedAt,
-          notes: request.notes,
-          worked: request.worked || false,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await loadLeaveRequests();
-      return data;
-    } catch (error) {
-      console.error('Error creating leave request:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for creating leave request
+    console.log('createLeaveRequest not yet implemented for REST API');
+    return null;
   };
 
   const updateLeaveRequest = async (id: string, updates: Partial<LeaveRequest>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       setLeaveRequests(prev => prev.map(request => 
         request.id === id ? { ...request, ...updates, updatedAt: new Date().toISOString() } : request
@@ -134,53 +106,19 @@ export const useLeaveRequests = () => {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('leave_requests')
-        .update({
-          employee_id: updates.employeeId,
-          type: updates.type,
-          start_date: updates.startDate,
-          end_date: updates.endDate,
-          days_count: updates.daysCount,
-          reason: updates.reason,
-          status: updates.status,
-          approved_by: updates.approvedBy,
-          approved_at: updates.approvedAt,
-          notes: updates.notes,
-          worked: updates.worked,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadLeaveRequests();
-    } catch (error) {
-      console.error('Error updating leave request:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for updating leave request
+    console.log('updateLeaveRequest not yet implemented for REST API');
   };
 
   const deleteLeaveRequest = async (id: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       setLeaveRequests(prev => prev.filter(request => request.id !== id));
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('leave_requests')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadLeaveRequests();
-    } catch (error) {
-      console.error('Error deleting leave request:', error);
-      throw error;
-    }
+    // TODO: Implement REST API for deleting leave request
+    console.log('deleteLeaveRequest not yet implemented for REST API');
   };
 
   const getLeaveRequestsByEmployee = (employeeId: string) => {
@@ -256,3 +194,5 @@ export const useLeaveRequests = () => {
     isEmployeeOnLeave,
   };
 };
+
+

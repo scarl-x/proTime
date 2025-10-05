@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Booking, EmployeeAvailability, TimeSlot } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { API_URL, hasApiConnection } from '../lib/api';
+
 
 export const useBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
+    if (hasApiConnection) {
       loadBookings();
     } else {
       loadDemoBookings();
@@ -65,20 +66,17 @@ export const useBookings = () => {
   };
 
   const loadBookings = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) {
+      loadDemoBookings();
+      return;
+    }
     
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error loading bookings:', error);
-        throw error;
-      }
-
-      const formattedBookings: Booking[] = data.map(dbBooking => ({
+      const res = await fetch(`${API_URL}/api/bookings`);
+      if (!res.ok) throw new Error('Failed to load bookings');
+      const data = await res.json();
+      const formattedBookings: Booking[] = data.map((dbBooking: any) => ({
         id: dbBooking.id,
         requesterId: dbBooking.requester_id,
         employeeId: dbBooking.employee_id,
@@ -93,16 +91,14 @@ export const useBookings = () => {
         createdAt: dbBooking.created_at,
         updatedAt: dbBooking.updated_at,
       }));
-
       setBookings(formattedBookings);
     } catch (error) {
-      console.error('Error loading bookings:', error);
       loadDemoBookings();
     }
   };
 
   const createBooking = async (booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - add to local state
       const newBooking: Booking = {
         ...booking,
@@ -115,25 +111,24 @@ export const useBookings = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert({
-          requester_id: booking.requesterId,
-          employee_id: booking.employeeId,
-          project_id: booking.projectId,
+      const res = await fetch(`${API_URL}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterId: booking.requesterId,
+          employeeId: booking.employeeId,
+          projectId: booking.projectId,
           date: booking.date,
-          start_time: booking.startTime,
-          end_time: booking.endTime,
-          duration_hours: booking.durationHours,
-          task_description: booking.taskDescription,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          durationHours: booking.durationHours,
+          taskDescription: booking.taskDescription,
           status: booking.status,
           notes: booking.notes,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create booking');
+      const data = await res.json();
       await loadBookings();
       return data;
     } catch (error) {
@@ -143,7 +138,7 @@ export const useBookings = () => {
   };
 
   const updateBooking = async (id: string, updates: Partial<Booking>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - update local state
       setBookings(prev => prev.map(booking => 
         booking.id === id ? { ...booking, ...updates, updatedAt: new Date().toISOString() } : booking
@@ -152,24 +147,23 @@ export const useBookings = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          requester_id: updates.requesterId,
-          employee_id: updates.employeeId,
-          project_id: updates.projectId,
+      const res = await fetch(`${API_URL}/api/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterId: updates.requesterId,
+          employeeId: updates.employeeId,
+          projectId: updates.projectId,
           date: updates.date,
-          start_time: updates.startTime,
-          end_time: updates.endTime,
-          duration_hours: updates.durationHours,
-          task_description: updates.taskDescription,
+          startTime: updates.startTime,
+          endTime: updates.endTime,
+          durationHours: updates.durationHours,
+          taskDescription: updates.taskDescription,
           status: updates.status,
           notes: updates.notes,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update booking');
       await loadBookings();
     } catch (error) {
       console.error('Error updating booking:', error);
@@ -178,20 +172,17 @@ export const useBookings = () => {
   };
 
   const deleteBooking = async (id: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - remove from local state
       setBookings(prev => prev.filter(booking => booking.id !== id));
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      const res = await fetch(`${API_URL}/api/bookings/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete booking');
       await loadBookings();
     } catch (error) {
       console.error('Error deleting booking:', error);

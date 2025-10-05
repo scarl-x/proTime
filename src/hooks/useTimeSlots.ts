@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TimeSlot, WeeklyReport, Booking } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { API_URL, hasApiConnection } from '../lib/api';
+
 import { useEffect } from 'react';
 import { generateRecurringTasks, RecurringTaskConfig } from '../utils/recurringUtils';
 import { STANDUP_TASK_NAME, normalizeStatus } from '../utils/constants';
@@ -9,7 +10,7 @@ export const useTimeSlots = () => {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
+    if (hasApiConnection) {
       loadTimeSlots();
     } else {
       loadDemoTimeSlots();
@@ -81,19 +82,17 @@ export const useTimeSlots = () => {
   };
 
   const loadTimeSlots = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) {
+      loadDemoTimeSlots();
+      return;
+    }
     
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('time_slots')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedSlots: TimeSlot[] = data.map(dbSlot => ({
+      const res = await fetch(`${API_URL}/api/time-slots`);
+      if (!res.ok) throw new Error('Failed to load time slots');
+      const data = await res.json();
+      const formattedSlots: TimeSlot[] = data.map((dbSlot: any) => ({
         id: dbSlot.id,
         employeeId: dbSlot.employee_id,
         projectId: dbSlot.project_id,
@@ -122,13 +121,11 @@ export const useTimeSlots = () => {
         recurrenceDays: dbSlot.recurrence_days,
         parentRecurringId: dbSlot.parent_recurring_id,
         recurrenceCount: dbSlot.recurrence_count,
-        // Поля для дедлайнов
         deadline: dbSlot.deadline,
         deadlineType: dbSlot.deadline_type,
         isAssignedByAdmin: dbSlot.is_assigned_by_admin,
         deadlineReason: dbSlot.deadline_reason,
       }));
-
       setTimeSlots(formattedSlots);
     } catch (error) {
       loadDemoTimeSlots();
@@ -136,7 +133,7 @@ export const useTimeSlots = () => {
   };
 
   const addTimeSlot = async (slot: Omit<TimeSlot, 'id'>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - add to local state
       const newSlot: TimeSlot = {
         ...slot,
@@ -145,11 +142,13 @@ export const useTimeSlots = () => {
       setTimeSlots(prev => [...prev, newSlot]);
       return;
     }
-
+    
+    // REST API режим
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .insert({
+      const res = await fetch(`${API_URL}/api/time-slots`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           employee_id: slot.employeeId,
           project_id: slot.projectId,
           task_id: slot.taskId,
@@ -176,15 +175,13 @@ export const useTimeSlots = () => {
           recurrence_days: slot.recurrenceDays,
           parent_recurring_id: slot.parentRecurringId,
           recurrence_count: slot.recurrenceCount,
-          // Поля для дедлайнов
           deadline: slot.deadline,
           deadline_type: slot.deadlineType,
           is_assigned_by_admin: slot.isAssignedByAdmin,
           deadline_reason: slot.deadlineReason,
-        });
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to add time slot');
       await loadTimeSlots();
     } catch (error) {
       throw error;
@@ -192,18 +189,20 @@ export const useTimeSlots = () => {
   };
 
   const updateTimeSlot = async (id: string, updates: Partial<TimeSlot>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - update local state
       setTimeSlots(prev => prev.map(slot => 
         slot.id === id ? { ...slot, ...updates } : slot
       ));
       return;
     }
-
+    
+    // REST API режим
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .update({
+      const res = await fetch(`${API_URL}/api/time-slots/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           employee_id: updates.employeeId,
           project_id: updates.projectId,
           task_id: updates.taskId,
@@ -230,16 +229,13 @@ export const useTimeSlots = () => {
           recurrence_days: updates.recurrenceDays,
           parent_recurring_id: updates.parentRecurringId,
           recurrence_count: updates.recurrenceCount,
-          // Поля для дедлайнов
           deadline: updates.deadline,
           deadline_type: updates.deadlineType,
           is_assigned_by_admin: updates.isAssignedByAdmin,
           deadline_reason: updates.deadlineReason,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update time slot');
       await loadTimeSlots();
     } catch (error) {
       throw error;
@@ -250,20 +246,18 @@ export const useTimeSlots = () => {
     // Находим слот перед удалением, чтобы вернуть информацию о связанной задаче
     const slotToDelete = timeSlots.find(slot => slot.id === id);
     
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - remove from local state
       setTimeSlots(prev => prev.filter(slot => slot.id !== id));
       return slotToDelete; // Возвращаем информацию о слоте для удаления связанной задачи
     }
-
+    
+    // REST API режим
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      const res = await fetch(`${API_URL}/api/time-slots/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete time slot');
       await loadTimeSlots();
       return slotToDelete; // Возвращаем информацию о слоте для удаления связанной задачи
     } catch (error) {
@@ -431,3 +425,5 @@ export const useTimeSlots = () => {
     getAllTimeSlots,
   };
 };
+
+

@@ -1,22 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+// This file is deprecated. Use src/lib/api.ts instead.
+// Kept for backward compatibility only.
 
-// Supabase configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Check if we have Supabase credentials
-export const hasSupabaseCredentials = !!(supabaseUrl && supabaseAnonKey);
-
-// Only create client if we have credentials
-export const supabase = hasSupabaseCredentials 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false
-      }
-    })
-  : null;
+export { API_URL as hasRestApiCredentials, hasApiConnection } from './api';
 
 // Supabase connection status
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Project } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { API_URL, hasApiConnection } from '../lib/api';
 import { useEffect } from 'react';
 
 export const useProjects = () => {
@@ -8,7 +8,7 @@ export const useProjects = () => {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
+    if (hasApiConnection) {
       loadProjects();
     } else {
       loadDemoProjects();
@@ -54,91 +54,37 @@ export const useProjects = () => {
   };
 
   const loadProjects = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) {
+      loadDemoProjects();
+      return;
+    }
     
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedProjects: Project[] = data.map(dbProject => ({
+      const res = await fetch(`${API_URL}/api/projects`);
+      if (!res.ok) throw new Error('Failed to load projects');
+      const data = await res.json();
+      const formattedProjects: Project[] = data.map((dbProject: any) => ({
         id: dbProject.id,
         name: dbProject.name,
         description: dbProject.description,
         color: dbProject.color,
         status: dbProject.status as 'active' | 'completed' | 'on-hold',
-        createdAt: dbProject.created_at.split('T')[0],
+        createdAt: (dbProject.created_at || '').split('T')[0],
         teamLeadId: dbProject.team_lead_id || undefined,
         teamMembers: dbProject.team_members || [],
       }));
-
       setProjects(formattedProjects);
-      
-      // По умолчанию показываем все проекты
-      if (!currentProject) {
-        setCurrentProject(null);
-      }
-      
-      if (formattedProjects.length === 0) {
-        await createDemoProjectsInSupabase();
-      }
-    } catch (error) {
-      console.error('Error loading projects:', error);
+      if (!currentProject) setCurrentProject(null);
+    } catch (e) {
+      console.error('Error loading projects from REST API:', e);
       loadDemoProjects();
     }
   };
 
-  const createDemoProjectsInSupabase = async () => {
-    if (!supabase) return;
-    
-    try {
-      const demoProjects = [
-        {
-          name: 'Веб-приложение CRM',
-          description: 'Разработка системы управления клиентами',
-          color: '#3B82F6',
-          status: 'active',
-          team_members: [],
-        },
-        {
-          name: 'Мобильное приложение',
-          description: 'iOS и Android приложение для клиентов',
-          color: '#10B981',
-          status: 'active',
-          team_members: [],
-        },
-        {
-          name: 'Система аналитики',
-          description: 'Внутренняя система для анализа данных',
-          color: '#F59E0B',
-          status: 'on-hold',
-          team_members: [],
-        },
-      ];
-
-      const { data, error } = await supabase
-        .from('projects')
-        .insert(demoProjects)
-        .select();
-
-      if (error) {
-        loadDemoProjects();
-        return;
-      }
-
-      await loadProjects();
-    } catch (error) {
-      loadDemoProjects();
-    }
-  };
 
   const addProject = async (project: Omit<Project, 'id' | 'createdAt'>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - add to local state
       const newProject: Project = {
         ...project,
@@ -148,25 +94,24 @@ export const useProjects = () => {
       setProjects(prev => [...prev, newProject]);
       return newProject;
     }
-
+    
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .insert({
+      const res = await fetch(`${API_URL}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: project.name,
           description: project.description,
           color: project.color,
           status: project.status,
           team_lead_id: project.teamLeadId || null,
           team_members: project.teamMembers,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to add project');
       await loadProjects();
-      return data;
+      return await res.json();
     } catch (error) {
       console.error('Error adding project:', error);
       throw error;
@@ -174,29 +119,29 @@ export const useProjects = () => {
   };
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - update local state
       setProjects(prev => prev.map(project => 
         project.id === id ? { ...project, ...updates } : project
       ));
       return;
     }
-
+    
+    // REST API режим
     try {
-      const { error } = await supabase
-        .from('projects')
-        .update({
+      const res = await fetch(`${API_URL}/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: updates.name,
           description: updates.description,
           color: updates.color,
           status: updates.status,
           team_lead_id: updates.teamLeadId,
           team_members: updates.teamMembers,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update project');
       await loadProjects();
     } catch (error) {
       console.error('Error updating project:', error);
@@ -205,7 +150,7 @@ export const useProjects = () => {
   };
 
   const deleteProject = async (id: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode - remove from local state
       setProjects(prev => prev.filter(project => project.id !== id));
       if (currentProject?.id === id) {
@@ -213,15 +158,13 @@ export const useProjects = () => {
       }
       return;
     }
-
+    
+    // REST API режим
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      const res = await fetch(`${API_URL}/api/projects/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete project');
       await loadProjects();
       
       // Reset current project if it's the one being deleted
@@ -268,3 +211,4 @@ export const useProjects = () => {
     removeTeamMember,
   };
 };
+

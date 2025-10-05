@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Task, TaskAssignment } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { API_URL,  hasApiConnection  } from '../lib/api';
+
 
 export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskAssignments, setTaskAssignments] = useState<TaskAssignment[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
+    if (hasApiConnection) {
       loadTasks();
       loadTaskAssignments();
     } else {
@@ -108,19 +109,17 @@ export const useTasks = () => {
   };
 
   const loadTasks = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) {
+      loadDemoTasks();
+      return;
+    }
     
+    // REST API режим
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedTasks: Task[] = data.map(dbTask => ({
+      const res = await fetch(`${API_URL}/api/tasks`);
+      if (!res.ok) throw new Error('Failed to load tasks');
+      const data = await res.json();
+      const formattedTasks: Task[] = data.map((dbTask: any) => ({
         id: dbTask.id,
         projectId: dbTask.project_id,
         categoryId: dbTask.category_id,
@@ -141,27 +140,22 @@ export const useTasks = () => {
         createdAt: dbTask.created_at,
         updatedAt: dbTask.updated_at,
       }));
-
       setTasks(formattedTasks);
     } catch (error) {
+      console.error('Error loading tasks from REST API:', error);
       loadDemoTasks();
     }
   };
 
   const loadTaskAssignments = async () => {
-    if (!supabase) return;
+    if (!hasApiConnection) return;
     
     try {
-      const { data, error } = await supabase
-        .from('task_assignments')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const res = await fetch(`${API_URL}/api/task-assignments`);
+      if (!res.ok) throw new Error('Failed to load task assignments');
+      const data = await res.json();
 
-      if (error) {
-        throw error;
-      }
-
-      const formattedAssignments: TaskAssignment[] = data.map(dbAssignment => ({
+      const formattedAssignments: TaskAssignment[] = data.map((dbAssignment: any) => ({
         id: dbAssignment.id,
         taskId: dbAssignment.task_id,
         employeeId: dbAssignment.employee_id,
@@ -177,12 +171,12 @@ export const useTasks = () => {
 
       setTaskAssignments(formattedAssignments);
     } catch (error) {
-      // Ошибка загрузки назначений задач
+      console.error('Error loading task assignments from REST API:', error);
     }
   };
 
   const createTask = async (task: Omit<Task, 'id' | 'actualHours' | 'totalCost' | 'createdAt' | 'updatedAt'>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       const newTask: Task = {
         ...task,
@@ -197,27 +191,26 @@ export const useTasks = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          project_id: task.projectId,
-          category_id: task.categoryId || null,
+      const res = await fetch(`${API_URL}/api/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: task.projectId,
+          categoryId: task.categoryId || null,
           name: task.name,
           description: task.description,
-          planned_hours: task.plannedHours,
-          hourly_rate: task.hourlyRate,
+          plannedHours: task.plannedHours,
+          hourlyRate: task.hourlyRate,
           status: task.status,
-          created_by: task.createdBy,
+          createdBy: task.createdBy,
           deadline: task.deadline || null,
-          deadline_type: task.deadlineType || null,
-          deadline_reason: task.deadlineReason || null,
-          completed_at: task.completedAt || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+          deadlineType: task.deadlineType || null,
+          deadlineReason: task.deadlineReason || null,
+          completedAt: task.completedAt || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      const data = await res.json();
       await loadTasks();
       return data;
     } catch (error) {
@@ -227,7 +220,7 @@ export const useTasks = () => {
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       setTasks(prev => prev.map(task => 
         task.id === id ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task
@@ -236,32 +229,32 @@ export const useTasks = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          category_id: updates.categoryId || null,
+      const res = await fetch(`${API_URL}/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: updates.categoryId,
           name: updates.name,
           description: updates.description,
-          planned_hours: updates.plannedHours,
-          hourly_rate: updates.hourlyRate,
+          plannedHours: updates.plannedHours,
+          hourlyRate: updates.hourlyRate,
           status: updates.status,
           deadline: updates.deadline,
-          deadline_type: updates.deadlineType,
-          deadline_reason: updates.deadlineReason,
-          completed_at: updates.completedAt,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+          deadlineType: updates.deadlineType,
+          deadlineReason: updates.deadlineReason,
+          completedAt: updates.completedAt,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update task');
       await loadTasks();
     } catch (error) {
+      console.error('Error updating task:', error);
       throw error;
     }
   };
 
   const deleteTask = async (id: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       setTasks(prev => prev.filter(task => task.id !== id));
       setTaskAssignments(prev => prev.filter(assignment => assignment.taskId !== id));
@@ -269,13 +262,10 @@ export const useTasks = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      const res = await fetch(`${API_URL}/api/tasks/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete task');
       await loadTasks();
       await loadTaskAssignments();
     } catch (error) {
@@ -293,7 +283,7 @@ export const useTasks = () => {
     deadlineReason?: string,
     priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'
   ) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       const newAssignment: TaskAssignment = {
         id: Date.now().toString(),
@@ -312,22 +302,21 @@ export const useTasks = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('task_assignments')
-        .insert({
-          task_id: taskId,
-          employee_id: employeeId,
-          allocated_hours: allocatedHours,
+      const res = await fetch(`${API_URL}/api/task-assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          employeeId,
+          allocatedHours,
           deadline,
-          deadline_type: deadlineType,
-          deadline_reason: deadlineReason,
+          deadlineType,
+          deadlineReason,
           priority,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to assign task');
+      const data = await res.json();
       await loadTaskAssignments();
       return data;
     } catch (error) {
@@ -337,7 +326,7 @@ export const useTasks = () => {
   };
 
   const updateTaskAssignment = async (id: string, updates: Partial<TaskAssignment>) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       setTaskAssignments(prev => prev.map(assignment => 
         assignment.id === id ? { ...assignment, ...updates } : assignment
@@ -346,20 +335,19 @@ export const useTasks = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('task_assignments')
-        .update({
-          allocated_hours: updates.allocatedHours,
-          actual_hours: updates.actualHours,
+      const res = await fetch(`${API_URL}/api/task-assignments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          allocatedHours: updates.allocatedHours,
+          actualHours: updates.actualHours,
           deadline: updates.deadline,
-          deadline_type: updates.deadlineType,
-          deadline_reason: updates.deadlineReason,
+          deadlineType: updates.deadlineType,
+          deadlineReason: updates.deadlineReason,
           priority: updates.priority,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update task assignment');
       await loadTaskAssignments();
     } catch (error) {
       console.error('Error updating task assignment:', error);
@@ -368,20 +356,17 @@ export const useTasks = () => {
   };
 
   const removeTaskAssignment = async (id: string) => {
-    if (!supabase) {
+    if (!hasApiConnection) {
       // Demo mode
       setTaskAssignments(prev => prev.filter(assignment => assignment.id !== id));
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('task_assignments')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      const res = await fetch(`${API_URL}/api/task-assignments/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to remove task assignment');
       await loadTaskAssignments();
     } catch (error) {
       console.error('Error removing task assignment:', error);
