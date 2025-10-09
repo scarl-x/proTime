@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { authAPI, usersAPI, setToken, getToken, removeToken } from '../lib/api';
 import { 
-  createJWTToken, 
   validateStoredToken, 
-  saveTokenToStorage, 
-  removeTokenFromStorage,
   JWTPayload 
 } from '../utils/jwtUtils';
 
@@ -21,9 +18,11 @@ export const useAuth = () => {
       
       // Загружаем пользователей
       let loadedUsers: User[] = [];
-      if (hasSupabaseCredentials && supabase) {
-        loadedUsers = await loadUsersAndReturn();
-      } else {
+      try {
+        loadedUsers = await usersAPI.getAll();
+        setUsers(loadedUsers);
+      } catch (error) {
+        // Если не удалось загрузить с API, используем демо данные
         loadedUsers = loadDemoUsersAndReturn();
       }
       
@@ -35,7 +34,7 @@ export const useAuth = () => {
           setUser(foundUser);
         } else {
           // Если пользователь не найден, удаляем невалидный токен
-          removeTokenFromStorage();
+          removeToken();
         }
       }
       
@@ -127,38 +126,9 @@ export const useAuth = () => {
   };
 
   const loadUsers = async () => {
-    if (!supabase) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedUsers: User[] = data.map(dbUser => ({
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role as 'admin' | 'employee',
-        position: dbUser.position,
-        hasAccount: dbUser.has_account,
-        password: dbUser.password,
-        birthday: dbUser.birthday,
-        employmentDate: dbUser.employment_date,
-        terminationDate: dbUser.termination_date,
-        timezone: dbUser.timezone ?? undefined,
-      }));
-
-      setUsers(formattedUsers);
-      
-      // Если нет пользователей в базе, добавляем демо-пользователей
-      if (formattedUsers.length === 0) {
-        await createDemoUsersInSupabase();
-      }
+      const loadedUsers = await usersAPI.getAll();
+      setUsers(loadedUsers);
     } catch (error) {
       // В случае ошибки загружаем демо-пользователей
       loadDemoUsers();
@@ -168,116 +138,35 @@ export const useAuth = () => {
   };
 
   const loadUsersAndReturn = async (): Promise<User[]> => {
-    if (!supabase) return loadDemoUsersAndReturn();
-    
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedUsers: User[] = data.map(dbUser => ({
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role as 'admin' | 'employee',
-        position: dbUser.position,
-        hasAccount: dbUser.has_account,
-        password: dbUser.password,
-        birthday: dbUser.birthday,
-        employmentDate: dbUser.employment_date,
-        terminationDate: dbUser.termination_date,
-        timezone: dbUser.timezone ?? undefined,
-      }));
-
-      setUsers(formattedUsers);
-      
-      // Если нет пользователей в базе, добавляем демо-пользователей
-      if (formattedUsers.length === 0) {
-        await createDemoUsersInSupabase();
-        return await loadUsersAndReturn(); // Рекурсивно загружаем после создания демо-пользователей
-      }
-      
-      return formattedUsers;
+      const loadedUsers = await usersAPI.getAll();
+      setUsers(loadedUsers);
+      return loadedUsers;
     } catch (error) {
       // В случае ошибки загружаем демо-пользователей
       return loadDemoUsersAndReturn();
     }
   };
 
-  const createDemoUsersInSupabase = async () => {
-    if (!supabase) return;
-    
-    try {
-      const demoUsers = [
-        {
-          name: 'Админ Системы',
-          email: 'admin@company.com',
-          role: 'admin',
-          has_account: true,
-          password: 'password',
-          employment_date: '2024-01-15',
-        },
-        {
-          name: 'Иван Петров',
-          email: 'ivan@company.com',
-          role: 'employee',
-          position: 'developer',
-          has_account: true,
-          password: 'password',
-          birthday: '1988-07-22',
-          employment_date: '2024-03-01',
-        },
-        {
-          name: 'Мария Сидорова',
-          email: 'maria@company.com',
-          role: 'employee',
-          position: 'designer',
-          has_account: true,
-          password: 'password',
-          birthday: '1992-11-08',
-          employment_date: '2024-06-01',
-        },
-      ];
-
-      const { data, error } = await supabase
-        .from('users')
-        .insert(demoUsers)
-        .select();
-
-      if (error) {
-        loadDemoUsers();
-        return;
-      }
-
-      await loadUsers();
-    } catch (error) {
-      loadDemoUsers();
-    }
-  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const foundUser = users.find(u => u.email === email && u.hasAccount);
-    if (foundUser && foundUser.password === password) {
-      setUser(foundUser);
-      
-      // Создаем и сохраняем JWT токен
-      const token = await createJWTToken(foundUser);
-      saveTokenToStorage(token);
-      
-      return true;
+    try {
+      const response = await authAPI.login(email, password);
+      if (response.user) {
+        setUser(response.user);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setUser(null);
     // Удаляем JWT токен из localStorage
-    removeTokenFromStorage();
+    authAPI.logout();
   };
 
   const switchUser = (userId: string) => {
@@ -288,36 +177,10 @@ export const useAuth = () => {
   };
 
   const addEmployee = async (employeeData: Omit<User, 'id'>) => {
-    if (!supabase) {
-      // Demo mode - add to local state
-      const newEmployee: User = {
-        ...employeeData,
-        id: Date.now().toString(),
-      };
-      setUsers(prev => [...prev, newEmployee]);
-      return newEmployee;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .insert({
-          name: employeeData.name,
-          email: employeeData.email,
-          role: 'employee',
-          position: employeeData.position,
-          has_account: false,
-          birthday: employeeData.birthday || null,
-          employment_date: employeeData.employmentDate || null,
-          termination_date: employeeData.terminationDate || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const newEmployee = await usersAPI.create(employeeData);
       await loadUsers();
-      return data;
+      return newEmployee;
     } catch (error) {
       console.error('Error adding employee:', error);
       throw error;
@@ -325,24 +188,8 @@ export const useAuth = () => {
   };
 
   const createEmployeeAccount = async (employeeId: string, password: string) => {
-    if (!supabase) {
-      // Demo mode - update local state
-      setUsers(prev => prev.map(user => 
-        user.id === employeeId 
-          ? { ...user, hasAccount: true, password }
-          : user
-      ));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ has_account: true, password })
-        .eq('id', employeeId);
-
-      if (error) throw error;
-
+      await usersAPI.createAccount(employeeId, password);
       await loadUsers();
     } catch (error) {
       console.error('Error creating employee account:', error);
@@ -351,24 +198,8 @@ export const useAuth = () => {
   };
 
   const removeEmployeeAccount = async (employeeId: string) => {
-    if (!supabase) {
-      // Demo mode - update local state
-      setUsers(prev => prev.map(user => 
-        user.id === employeeId 
-          ? { ...user, hasAccount: false, password: undefined }
-          : user
-      ));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ has_account: false, password: null })
-        .eq('id', employeeId);
-
-      if (error) throw error;
-
+      await usersAPI.removeAccount(employeeId);
       await loadUsers();
     } catch (error) {
       console.error('Error removing employee account:', error);
@@ -377,31 +208,8 @@ export const useAuth = () => {
   };
 
   const updateEmployee = async (id: string, updates: Partial<User>) => {
-    if (!supabase) {
-      // Demo mode - update local state
-      setUsers(prev => prev.map(user => 
-        user.id === id ? { ...user, ...updates } : user
-      ));
-      return;
-    }
-
     try {
-      const payload: Record<string, unknown> = {};
-      if (updates.name !== undefined) payload.name = updates.name;
-      if (updates.email !== undefined) payload.email = updates.email;
-      if (updates.role !== undefined) payload.role = updates.role;
-      if (updates.position !== undefined) payload.position = updates.position;
-      if (updates.birthday !== undefined) payload.birthday = updates.birthday || null;
-      if (updates.employmentDate !== undefined) payload.employment_date = updates.employmentDate || null;
-      if (updates.terminationDate !== undefined) payload.termination_date = updates.terminationDate || null;
-
-      const { error } = await supabase
-        .from('users')
-        .update(payload)
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await usersAPI.update(id, updates);
       await loadUsers();
     } catch (error) {
       console.error('Error updating employee:', error);
@@ -410,20 +218,8 @@ export const useAuth = () => {
   };
 
   const deleteEmployee = async (id: string) => {
-    if (!supabase) {
-      // Demo mode - remove from local state
-      setUsers(prev => prev.filter(user => user.id !== id));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await usersAPI.delete(id);
       await loadUsers();
     } catch (error) {
       console.error('Error deleting employee:', error);
@@ -433,12 +229,8 @@ export const useAuth = () => {
 
   const updateTimezone = async (timezone: string) => {
     try {
-      if (hasSupabaseCredentials && supabase && user) {
-        const { error } = await supabase
-          .from('users')
-          .update({ timezone })
-          .eq('id', user.id);
-        if (error) throw error;
+      if (user) {
+        await usersAPI.update(user.id, { timezone });
         
         // Обновляем локальное состояние
         setUser(prev => prev ? { ...prev, timezone } : prev);

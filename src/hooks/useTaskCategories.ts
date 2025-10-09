@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
 import { TaskCategory } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { taskCategoriesAPI } from '../lib/api';
 
 export const useTaskCategories = () => {
   const [categories, setCategories] = useState<TaskCategory[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
-      loadCategories();
-    } else {
-      loadDemoCategories();
-    }
+    loadCategories();
   }, []);
 
   const loadDemoCategories = () => {
@@ -75,178 +71,29 @@ export const useTaskCategories = () => {
   };
 
   const loadCategories = async () => {
-    if (!supabase) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('task_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Supabase error loading task categories:', error);
-        throw error;
-      }
-
-      const formattedCategories: TaskCategory[] = data.map(dbCategory => ({
-        id: dbCategory.id,
-        name: dbCategory.name,
-        description: dbCategory.description,
-        defaultHours: dbCategory.default_hours,
-        defaultHourlyRate: dbCategory.default_hourly_rate,
-        color: dbCategory.color,
-        isActive: dbCategory.is_active,
-        createdBy: dbCategory.created_by,
-        createdAt: dbCategory.created_at,
-      }));
-
-      setCategories(formattedCategories);
-      
-      if (formattedCategories.length === 0) {
-        await createDemoCategoriesInSupabase();
-      }
+      const loadedCategories = await taskCategoriesAPI.getAll(true);
+      setCategories(loadedCategories);
     } catch (error) {
-      loadDemoCategories();
-    }
-  };
-
-  const createDemoCategoriesInSupabase = async () => {
-    if (!supabase) return;
-    
-    try {
-      // Get admin user ID
-      const { data: adminUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role', 'admin')
-        .limit(1)
-        .single();
-
-      if (!adminUser) {
-        return;
-      }
-
-      const demoCategories = [
-        {
-          name: 'Разработка API',
-          description: 'Создание и разработка API endpoints',
-          default_hours: 16,
-          default_hourly_rate: 3500,
-          color: '#3B82F6',
-          created_by: adminUser.id,
-        },
-        {
-          name: 'Тестирование',
-          description: 'Написание и выполнение тестов',
-          default_hours: 8,
-          default_hourly_rate: 3000,
-          color: '#10B981',
-          created_by: adminUser.id,
-        },
-        {
-          name: 'Код-ревью',
-          description: 'Проверка и ревью кода коллег',
-          default_hours: 4,
-          default_hourly_rate: 3500,
-          color: '#8B5CF6',
-          created_by: adminUser.id,
-        },
-        {
-          name: 'Документация',
-          description: 'Написание технической документации',
-          default_hours: 6,
-          default_hourly_rate: 2500,
-          color: '#F59E0B',
-          created_by: adminUser.id,
-        },
-        {
-          name: 'Исправление багов',
-          description: 'Поиск и исправление ошибок',
-          default_hours: 4,
-          default_hourly_rate: 3500,
-          color: '#EF4444',
-          created_by: adminUser.id,
-        },
-      ];
-
-      const { data, error } = await supabase
-        .from('task_categories')
-        .insert(demoCategories)
-        .select();
-
-      if (error) {
-        loadDemoCategories();
-        return;
-      }
-
-      await loadCategories();
-    } catch (error) {
-      console.error('Error in createDemoCategoriesInSupabase:', error);
+      console.error('Error loading task categories:', error);
       loadDemoCategories();
     }
   };
 
   const createCategory = async (category: Omit<TaskCategory, 'id' | 'createdAt'>) => {
-    if (!supabase) {
-      // Demo mode
-      const newCategory: TaskCategory = {
-        ...category,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      };
-      setCategories(prev => [...prev, newCategory]);
-      return newCategory;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('task_categories')
-        .insert({
-          name: category.name,
-          description: category.description,
-          default_hours: category.defaultHours,
-          default_hourly_rate: category.defaultHourlyRate,
-          color: category.color,
-          is_active: category.isActive,
-          created_by: category.createdBy,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const newCategory = await taskCategoriesAPI.create(category);
       await loadCategories();
-      return data;
+      return newCategory;
     } catch (error) {
+      console.error('Error creating category:', error);
       throw error;
     }
   };
 
   const updateCategory = async (id: string, updates: Partial<TaskCategory>) => {
-    if (!supabase) {
-      // Demo mode
-      setCategories(prev => prev.map(category => 
-        category.id === id ? { ...category, ...updates } : category
-      ));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('task_categories')
-        .update({
-          name: updates.name,
-          description: updates.description,
-          default_hours: updates.defaultHours,
-          default_hourly_rate: updates.defaultHourlyRate,
-          color: updates.color,
-          is_active: updates.isActive,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await taskCategoriesAPI.update(id, updates);
       await loadCategories();
     } catch (error) {
       console.error('Error updating task category:', error);
@@ -255,20 +102,9 @@ export const useTaskCategories = () => {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!supabase) {
-      // Demo mode
-      setCategories(prev => prev.filter(category => category.id !== id));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('task_categories')
-        .update({ is_active: false })
-        .eq('id', id);
-
-      if (error) throw error;
-
+      // Мягкое удаление - помечаем как неактивную
+      await taskCategoriesAPI.update(id, { isActive: false });
       await loadCategories();
     } catch (error) {
       console.error('Error deleting task category:', error);

@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Task, TaskAssignment } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
+import { tasksAPI } from '../lib/api';
 
 export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskAssignments, setTaskAssignments] = useState<TaskAssignment[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
-      loadTasks();
-      loadTaskAssignments();
-    } else {
-      loadDemoTasks();
-    }
+    loadTasks();
+    loadAllTaskAssignments();
   }, []);
 
   const loadDemoTasks = () => {
@@ -108,118 +104,47 @@ export const useTasks = () => {
   };
 
   const loadTasks = async () => {
-    if (!supabase) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedTasks: Task[] = data.map(dbTask => ({
-        id: dbTask.id,
-        projectId: dbTask.project_id,
-        categoryId: dbTask.category_id,
-        name: dbTask.name,
-        description: dbTask.description,
-        plannedHours: dbTask.planned_hours,
-        actualHours: dbTask.actual_hours,
-        hourlyRate: dbTask.hourly_rate,
-        totalCost: dbTask.total_cost,
-        status: dbTask.status,
-        createdBy: dbTask.created_by,
-        // Дедлайн-поля и завершение
-        deadline: dbTask.deadline,
-        deadlineType: dbTask.deadline_type,
-        deadlineReason: dbTask.deadline_reason,
-        completedAt: dbTask.completed_at,
-        deadlineChangeLog: dbTask.deadline_change_log || [],
-        createdAt: dbTask.created_at,
-        updatedAt: dbTask.updated_at,
-      }));
-
-      setTasks(formattedTasks);
+      const loadedTasks = await tasksAPI.getAll();
+      setTasks(loadedTasks);
     } catch (error) {
+      console.error('Error loading tasks:', error);
       loadDemoTasks();
     }
   };
 
-  const loadTaskAssignments = async () => {
-    if (!supabase) return;
-    
+  const loadAllTaskAssignments = async () => {
     try {
-      const { data, error } = await supabase
-        .from('task_assignments')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
+      // Загружаем назначения для всех задач
+      const allAssignments: TaskAssignment[] = [];
+      for (const task of tasks) {
+        const assignments = await tasksAPI.getAssignments(task.id);
+        allAssignments.push(...assignments);
       }
-
-      const formattedAssignments: TaskAssignment[] = data.map(dbAssignment => ({
-        id: dbAssignment.id,
-        taskId: dbAssignment.task_id,
-        employeeId: dbAssignment.employee_id,
-        allocatedHours: dbAssignment.allocated_hours,
-        actualHours: dbAssignment.actual_hours,
-        createdAt: dbAssignment.created_at,
-        // Поля для дедлайнов
-        deadline: dbAssignment.deadline,
-        deadlineType: dbAssignment.deadline_type,
-        deadlineReason: dbAssignment.deadline_reason,
-        priority: dbAssignment.priority,
-      }));
-
-      setTaskAssignments(formattedAssignments);
+      setTaskAssignments(allAssignments);
     } catch (error) {
-      // Ошибка загрузки назначений задач
+      console.error('Error loading task assignments:', error);
+    }
+  };
+
+  const loadTaskAssignments = async (taskId: string) => {
+    try {
+      const assignments = await tasksAPI.getAssignments(taskId);
+      // Обновляем только назначения для этой задачи
+      setTaskAssignments(prev => [
+        ...prev.filter(a => a.taskId !== taskId),
+        ...assignments
+      ]);
+    } catch (error) {
+      console.error('Error loading task assignments:', error);
     }
   };
 
   const createTask = async (task: Omit<Task, 'id' | 'actualHours' | 'totalCost' | 'createdAt' | 'updatedAt'>) => {
-    if (!supabase) {
-      // Demo mode
-      const newTask: Task = {
-        ...task,
-        id: Date.now().toString(),
-        actualHours: 0,
-        totalCost: task.plannedHours * task.hourlyRate,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setTasks(prev => [...prev, newTask]);
-      return newTask;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          project_id: task.projectId,
-          category_id: task.categoryId || null,
-          name: task.name,
-          description: task.description,
-          planned_hours: task.plannedHours,
-          hourly_rate: task.hourlyRate,
-          status: task.status,
-          created_by: task.createdBy,
-          deadline: task.deadline || null,
-          deadline_type: task.deadlineType || null,
-          deadline_reason: task.deadlineReason || null,
-          completed_at: task.completedAt || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const newTask = await tasksAPI.create(task);
       await loadTasks();
-      return data;
+      return newTask;
     } catch (error) {
       console.error('Error creating task:', error);
       throw error;
@@ -227,57 +152,21 @@ export const useTasks = () => {
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    if (!supabase) {
-      // Demo mode
-      setTasks(prev => prev.map(task => 
-        task.id === id ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task
-      ));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          category_id: updates.categoryId || null,
-          name: updates.name,
-          description: updates.description,
-          planned_hours: updates.plannedHours,
-          hourly_rate: updates.hourlyRate,
-          status: updates.status,
-          deadline: updates.deadline,
-          deadline_type: updates.deadlineType,
-          deadline_reason: updates.deadlineReason,
-          completed_at: updates.completedAt,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await tasksAPI.update(id, updates);
       await loadTasks();
     } catch (error) {
+      console.error('Error updating task:', error);
       throw error;
     }
   };
 
   const deleteTask = async (id: string) => {
-    if (!supabase) {
-      // Demo mode
-      setTasks(prev => prev.filter(task => task.id !== id));
-      setTaskAssignments(prev => prev.filter(assignment => assignment.taskId !== id));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await tasksAPI.delete(id);
       await loadTasks();
-      await loadTaskAssignments();
+      // Также удаляем назначения из локального состояния
+      setTaskAssignments(prev => prev.filter(assignment => assignment.taskId !== id));
     } catch (error) {
       console.error('Error deleting task:', error);
       throw error;
@@ -293,43 +182,18 @@ export const useTasks = () => {
     deadlineReason?: string,
     priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'
   ) => {
-    if (!supabase) {
-      // Demo mode
-      const newAssignment: TaskAssignment = {
-        id: Date.now().toString(),
-        taskId,
+    try {
+      const newAssignment = await tasksAPI.createAssignment(taskId, {
         employeeId,
         allocatedHours,
         actualHours: 0,
-        createdAt: new Date().toISOString(),
         deadline,
         deadlineType,
         deadlineReason,
         priority,
-      };
-      setTaskAssignments(prev => [...prev, newAssignment]);
+      });
+      await loadTaskAssignments(taskId);
       return newAssignment;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('task_assignments')
-        .insert({
-          task_id: taskId,
-          employee_id: employeeId,
-          allocated_hours: allocatedHours,
-          deadline,
-          deadline_type: deadlineType,
-          deadline_reason: deadlineReason,
-          priority,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await loadTaskAssignments();
-      return data;
     } catch (error) {
       console.error('Error assigning task:', error);
       throw error;
@@ -337,30 +201,13 @@ export const useTasks = () => {
   };
 
   const updateTaskAssignment = async (id: string, updates: Partial<TaskAssignment>) => {
-    if (!supabase) {
-      // Demo mode
-      setTaskAssignments(prev => prev.map(assignment => 
-        assignment.id === id ? { ...assignment, ...updates } : assignment
-      ));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('task_assignments')
-        .update({
-          allocated_hours: updates.allocatedHours,
-          actual_hours: updates.actualHours,
-          deadline: updates.deadline,
-          deadline_type: updates.deadlineType,
-          deadline_reason: updates.deadlineReason,
-          priority: updates.priority,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadTaskAssignments();
+      await tasksAPI.updateAssignment(id, updates);
+      // Найдем taskId для перезагрузки назначений
+      const assignment = taskAssignments.find(a => a.id === id);
+      if (assignment) {
+        await loadTaskAssignments(assignment.taskId);
+      }
     } catch (error) {
       console.error('Error updating task assignment:', error);
       throw error;
@@ -368,21 +215,10 @@ export const useTasks = () => {
   };
 
   const removeTaskAssignment = async (id: string) => {
-    if (!supabase) {
-      // Demo mode
-      setTaskAssignments(prev => prev.filter(assignment => assignment.id !== id));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('task_assignments')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      await loadTaskAssignments();
+      await tasksAPI.deleteAssignment(id);
+      // Удаляем из локального состояния
+      setTaskAssignments(prev => prev.filter(assignment => assignment.id !== id));
     } catch (error) {
       console.error('Error removing task assignment:', error);
       throw error;

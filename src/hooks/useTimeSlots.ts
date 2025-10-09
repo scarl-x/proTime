@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TimeSlot, WeeklyReport, Booking } from '../types';
-import { supabase, hasSupabaseCredentials } from '../lib/supabase';
-import { useEffect } from 'react';
+import { timeSlotsAPI } from '../lib/api';
 import { generateRecurringTasks, RecurringTaskConfig } from '../utils/recurringUtils';
 import { STANDUP_TASK_NAME, normalizeStatus } from '../utils/constants';
 
@@ -9,11 +8,7 @@ export const useTimeSlots = () => {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
 
   useEffect(() => {
-    if (hasSupabaseCredentials && supabase) {
-      loadTimeSlots();
-    } else {
-      loadDemoTimeSlots();
-    }
+    loadTimeSlots();
   }, []);
 
   const loadDemoTimeSlots = () => {
@@ -62,7 +57,7 @@ export const useTimeSlots = () => {
         id: '3',
         employeeId: '1',
         projectId: '1',
-        taskId: '2', // ID задачи "Интеграция с внешними сервисами"
+        taskId: '2',
         date: today.toISOString().split('T')[0],
         startTime: '09:00',
         endTime: '17:00',
@@ -81,167 +76,41 @@ export const useTimeSlots = () => {
   };
 
   const loadTimeSlots = async () => {
-    if (!supabase) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('time_slots')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      const formattedSlots: TimeSlot[] = data.map(dbSlot => ({
-        id: dbSlot.id,
-        employeeId: dbSlot.employee_id,
-        projectId: dbSlot.project_id,
-        taskId: dbSlot.task_id,
-        date: dbSlot.date,
-        startTime: dbSlot.start_time,
-        endTime: dbSlot.end_time,
-        start_at_utc: dbSlot.start_at_utc,
-        end_at_utc: dbSlot.end_at_utc,
-        task: dbSlot.task,
-        plannedHours: dbSlot.planned_hours,
-        actualHours: dbSlot.actual_hours,
-        status: normalizeStatus(dbSlot.status) as 'planned' | 'in-progress' | 'completed',
-        category: dbSlot.category || 'Development',
-        parentTaskId: dbSlot.parent_task_id,
-        taskSequence: dbSlot.task_sequence,
-        totalTaskHours: dbSlot.total_task_hours,
-        isPaused: dbSlot.is_paused || false,
-        pausedAt: dbSlot.paused_at,
-        resumedAt: dbSlot.resumed_at,
-        completedAt: dbSlot.completed_at,
-        isRecurring: dbSlot.is_recurring || false,
-        recurrenceType: dbSlot.recurrence_type,
-        recurrenceInterval: dbSlot.recurrence_interval,
-        recurrenceEndDate: dbSlot.recurrence_end_date,
-        recurrenceDays: dbSlot.recurrence_days,
-        parentRecurringId: dbSlot.parent_recurring_id,
-        recurrenceCount: dbSlot.recurrence_count,
-        // Поля для дедлайнов
-        deadline: dbSlot.deadline,
-        deadlineType: dbSlot.deadline_type,
-        isAssignedByAdmin: dbSlot.is_assigned_by_admin,
-        deadlineReason: dbSlot.deadline_reason,
+      const slots = await timeSlotsAPI.getAll();
+      
+      // Нормализуем статусы, если нужно
+      const normalizedSlots = slots.map(slot => ({
+        ...slot,
+        status: normalizeStatus(slot.status) as 'planned' | 'in-progress' | 'completed',
+        category: slot.category || 'Development',
+        isPaused: slot.isPaused || false,
+        isRecurring: slot.isRecurring || false,
       }));
 
-      setTimeSlots(formattedSlots);
+      setTimeSlots(normalizedSlots);
     } catch (error) {
+      console.error('Error loading time slots:', error);
       loadDemoTimeSlots();
     }
   };
 
   const addTimeSlot = async (slot: Omit<TimeSlot, 'id'>) => {
-    if (!supabase) {
-      // Demo mode - add to local state
-      const newSlot: TimeSlot = {
-        ...slot,
-        id: Date.now().toString(),
-      };
-      setTimeSlots(prev => [...prev, newSlot]);
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .insert({
-          employee_id: slot.employeeId,
-          project_id: slot.projectId,
-          task_id: slot.taskId,
-          date: slot.date,
-          start_time: slot.startTime,
-          end_time: slot.endTime,
-          start_at_utc: slot.start_at_utc,
-          end_at_utc: slot.end_at_utc,
-          task: slot.task,
-          planned_hours: slot.plannedHours,
-          actual_hours: slot.actualHours,
-          status: slot.status,
-          category: slot.category,
-          parent_task_id: slot.parentTaskId,
-          task_sequence: slot.taskSequence,
-          total_task_hours: slot.totalTaskHours,
-          is_paused: slot.isPaused,
-          paused_at: slot.pausedAt,
-          resumed_at: slot.resumedAt,
-          is_recurring: slot.isRecurring,
-          recurrence_type: slot.recurrenceType,
-          recurrence_interval: slot.recurrenceInterval,
-          recurrence_end_date: slot.recurrenceEndDate,
-          recurrence_days: slot.recurrenceDays,
-          parent_recurring_id: slot.parentRecurringId,
-          recurrence_count: slot.recurrenceCount,
-          // Поля для дедлайнов
-          deadline: slot.deadline,
-          deadline_type: slot.deadlineType,
-          is_assigned_by_admin: slot.isAssignedByAdmin,
-          deadline_reason: slot.deadlineReason,
-        });
-
-      if (error) throw error;
-
+      await timeSlotsAPI.create(slot);
       await loadTimeSlots();
     } catch (error) {
+      console.error('Error adding time slot:', error);
       throw error;
     }
   };
 
   const updateTimeSlot = async (id: string, updates: Partial<TimeSlot>) => {
-    if (!supabase) {
-      // Demo mode - update local state
-      setTimeSlots(prev => prev.map(slot => 
-        slot.id === id ? { ...slot, ...updates } : slot
-      ));
-      return;
-    }
-
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .update({
-          employee_id: updates.employeeId,
-          project_id: updates.projectId,
-          task_id: updates.taskId,
-          date: updates.date,
-          start_time: updates.startTime,
-          end_time: updates.endTime,
-          start_at_utc: updates.start_at_utc,
-          end_at_utc: updates.end_at_utc,
-          task: updates.task,
-          planned_hours: updates.plannedHours,
-          actual_hours: updates.actualHours,
-          status: updates.status,
-          category: updates.category,
-          parent_task_id: updates.parentTaskId,
-          task_sequence: updates.taskSequence,
-          total_task_hours: updates.totalTaskHours,
-          is_paused: updates.isPaused,
-          paused_at: updates.pausedAt,
-          resumed_at: updates.resumedAt,
-          is_recurring: updates.isRecurring,
-          recurrence_type: updates.recurrenceType,
-          recurrence_interval: updates.recurrenceInterval,
-          recurrence_end_date: updates.recurrenceEndDate,
-          recurrence_days: updates.recurrenceDays,
-          parent_recurring_id: updates.parentRecurringId,
-          recurrence_count: updates.recurrenceCount,
-          // Поля для дедлайнов
-          deadline: updates.deadline,
-          deadline_type: updates.deadlineType,
-          is_assigned_by_admin: updates.isAssignedByAdmin,
-          deadline_reason: updates.deadlineReason,
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await timeSlotsAPI.update(id, updates);
       await loadTimeSlots();
     } catch (error) {
+      console.error('Error updating time slot:', error);
       throw error;
     }
   };
@@ -250,23 +119,12 @@ export const useTimeSlots = () => {
     // Находим слот перед удалением, чтобы вернуть информацию о связанной задаче
     const slotToDelete = timeSlots.find(slot => slot.id === id);
     
-    if (!supabase) {
-      // Demo mode - remove from local state
-      setTimeSlots(prev => prev.filter(slot => slot.id !== id));
-      return slotToDelete; // Возвращаем информацию о слоте для удаления связанной задачи
-    }
-
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await timeSlotsAPI.delete(id);
       await loadTimeSlots();
       return slotToDelete; // Возвращаем информацию о слоте для удаления связанной задачи
     } catch (error) {
+      console.error('Error deleting time slot:', error);
       throw error;
     }
   };
