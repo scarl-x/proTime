@@ -63,10 +63,17 @@ export const DayView: React.FC<DayViewProps> = ({
     return timeSlots.filter(slot => {
       try {
         const converted = convertSlotToLocal(slot, effectiveZone);
+        // Если конвертация вернула null, используем fallback
+        if (!converted || !converted.date) {
+          const slotDate = slot.date.split('T')[0];
+          return slotDate === date;
+        }
         return converted.date === date;
       } catch (error) {
         console.error('Error converting slot:', slot, error);
-        return false;
+        // Fallback: сравниваем только даты без времени
+        const slotDate = slot.date.split('T')[0];
+        return slotDate === date;
       }
     });
   }, [timeSlots, date, effectiveZone]);
@@ -92,19 +99,51 @@ export const DayView: React.FC<DayViewProps> = ({
   }, []);
 
   const getSlotStyle = useCallback((slot: TimeSlot) => {
-    const converted = convertSlotToLocal(slot, effectiveZone);
-    const { h: start, m: startMinutes } = parseHM(converted.startTime);
-    const duration = slot.actualHours || slot.plannedHours;
-    const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
-    const rawHeight = duration * perHourPx;
-    const height = Math.max(rawHeight, 28);
+    try {
+      const converted = convertSlotToLocal(slot, effectiveZone);
+      // Если конвертация вернула null, используем fallback
+      if (!converted || !converted.startTime) {
+        const { h: start, m: startMinutes } = parseHM(slot.startTime || '00:00');
+        const duration = slot.actualHours || slot.plannedHours;
+        const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+        const rawHeight = duration * perHourPx;
+        const height = Math.max(rawHeight, 28);
 
-    return {
-      top: `${top}px`,
-      height: `${height}px`,
-      left: '8px',
-      right: '8px',
-    };
+        return {
+          top: `${top}px`,
+          height: `${height}px`,
+          left: '8px',
+          right: '8px',
+        };
+      }
+      
+      const { h: start, m: startMinutes } = parseHM(converted.startTime);
+      const duration = slot.actualHours || slot.plannedHours;
+      const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+      const rawHeight = duration * perHourPx;
+      const height = Math.max(rawHeight, 28);
+
+      return {
+        top: `${top}px`,
+        height: `${height}px`,
+        left: '8px',
+        right: '8px',
+      };
+    } catch (error) {
+      // Fallback
+      const { h: start, m: startMinutes } = parseHM(slot.startTime || '00:00');
+      const duration = slot.actualHours || slot.plannedHours;
+      const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+      const rawHeight = duration * perHourPx;
+      const height = Math.max(rawHeight, 28);
+
+      return {
+        top: `${top}px`,
+        height: `${height}px`,
+        left: '8px',
+        right: '8px',
+      };
+    }
   }, [perHourPx, perMinutePx, effectiveZone]);
 
   const getSlotColor = useCallback((slot: TimeSlot) => getCalendarSlotClasses(slot), []);

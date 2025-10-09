@@ -41,7 +41,10 @@ export const MonthView: React.FC<MonthViewProps> = ({
 
   const getSlotsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return timeSlots.filter(slot => slot.date === dateStr);
+    return timeSlots.filter(slot => {
+      const slotDate = slot.date.split('T')[0];
+      return slotDate === dateStr;
+    });
   };
 
   const getDayStats = (slots: TimeSlot[]) => {

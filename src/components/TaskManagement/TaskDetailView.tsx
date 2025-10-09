@@ -3,6 +3,7 @@ import { X, Users, Clock, DollarSign, AlertTriangle, Plus, Edit2, Trash2, Calend
 import { Task, TaskAssignment, User, TimeSlot, Project } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 import { TaskDistributionModal } from './TaskDistributionModal';
+import { MarkdownRenderer } from '../MarkdownRenderer';
 
 interface TaskDetailViewProps {
   isOpen: boolean;
@@ -171,7 +172,9 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
           {task.description && (
             <div className="mb-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Описание</h3>
-              <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{task.description}</p>
+              <div className="text-gray-700 bg-gray-50 p-4 rounded-lg">
+                <MarkdownRenderer content={task.description} />
+              </div>
             </div>
           )}
 

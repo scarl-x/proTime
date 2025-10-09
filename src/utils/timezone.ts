@@ -102,11 +102,14 @@ export const fromUtcToLocal = (utcISO: string, zone: string): { date: string; hm
 /**
  * Конвертировать слот из UTC в локальное время
  */
-export const convertSlotToLocal = (slot: { date: string; startTime: string; endTime: string; start_at_utc?: string; end_at_utc?: string }, zone: string) => {
-  // Если есть новые UTC поля - используем их
-  if (slot.start_at_utc && slot.end_at_utc) {
-    const startLocal = fromUtcToLocal(slot.start_at_utc, zone);
-    const endLocal = fromUtcToLocal(slot.end_at_utc, zone);
+export const convertSlotToLocal = (slot: { date: string; startTime: string; endTime: string; start_at_utc?: string; end_at_utc?: string; startAtUtc?: string; endAtUtc?: string }, zone: string) => {
+  // Поддерживаем оба формата: camelCase (новый API) и snake_case (legacy Supabase)
+  const startUtc = (slot as any).startAtUtc || (slot as any).start_at_utc;
+  const endUtc = (slot as any).endAtUtc || (slot as any).end_at_utc;
+  
+  if (startUtc && endUtc) {
+    const startLocal = fromUtcToLocal(startUtc, zone);
+    const endLocal = fromUtcToLocal(endUtc, zone);
     return {
       date: startLocal.date,
       startTime: startLocal.hm,
@@ -114,7 +117,7 @@ export const convertSlotToLocal = (slot: { date: string; startTime: string; endT
     };
   }
   
-  // Fallback на legacy поля
+  // Fallback на legacy поля (предполагаем что date/startTime/endTime уже в UTC)
   const timeStr = slot.startTime.includes(':') ? slot.startTime.split(':').slice(0, 2).join(':') : slot.startTime;
   const iso = `${slot.date}T${timeStr}:00`;
   const dt = DateTime.fromISO(iso, { zone: 'utc' }).setZone(zone);
@@ -142,9 +145,10 @@ export const convertLocalToUtc = (date: string, startTime: string, endTime: stri
   const endUtc = toUtcISO(date, endTime, zone);
   
   return {
-    start_at_utc: startUtc,
-    end_at_utc: endUtc,
-    // Legacy поля для обратной совместимости
+    // Возвращаем в camelCase для нового API
+    startAtUtc: startUtc,
+    endAtUtc: endUtc,
+    // Legacy поля для обратной совместимости (в UTC!)
     date: DateTime.fromISO(startUtc).toISODate()!,
     startTime: DateTime.fromISO(startUtc).toFormat('HH:mm'),
     endTime: DateTime.fromISO(endUtc).toFormat('HH:mm')

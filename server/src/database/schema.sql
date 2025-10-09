@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS time_slots (
   start_at_utc TIMESTAMPTZ,
   end_at_utc TIMESTAMPTZ,
   task TEXT NOT NULL,
+  description TEXT,
   planned_hours NUMERIC(10,2) DEFAULT 0,
   actual_hours NUMERIC(10,2) DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('planned', 'in-progress', 'completed')) DEFAULT 'planned',

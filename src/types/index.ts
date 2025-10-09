@@ -33,9 +33,10 @@ export interface TimeSlot {
   date: string; // Legacy: дата в UTC (для обратной совместимости)
   startTime: string; // Legacy: время в UTC (для обратной совместимости)
   endTime: string; // Legacy: время в UTC (для обратной совместимости)
-  start_at_utc?: string; // UTC timestamp (основное поле)
-  end_at_utc?: string; // UTC timestamp (основное поле)
+  startAtUtc?: string; // UTC timestamp (основное поле)
+  endAtUtc?: string; // UTC timestamp (основное поле)
   task: string;
+  description?: string; // Описание задачи с поддержкой Markdown
   plannedHours: number;
   actualHours: number;
   status: 'planned' | 'in-progress' | 'completed';

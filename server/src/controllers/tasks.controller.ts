@@ -91,17 +91,16 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const totalCost = (plannedHours || 0) * (hourlyRate || 0);
-
+    // total_cost это generated column, не нужно передавать его в INSERT
     const result = await pool.query(
       `INSERT INTO tasks (
         project_id, name, description, planned_hours, actual_hours,
-        hourly_rate, total_cost, status, created_by, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        hourly_rate, status, created_by, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       RETURNING *`,
       [
         projectId, name, description || '', plannedHours || 0, actualHours || 0,
-        hourlyRate || 0, totalCost, status || 'new', createdBy
+        hourlyRate || 0, status || 'new', createdBy
       ]
     );
 
@@ -119,19 +118,7 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
       name, description, plannedHours, actualHours, hourlyRate, status
     } = req.body;
 
-    // Получаем текущую задачу для расчета totalCost
-    const current = await pool.query('SELECT * FROM tasks WHERE id = $1', [id]);
-    
-    if (current.rows.length === 0) {
-      res.status(404).json({ error: 'Задача не найдена' });
-      return;
-    }
-
-    const currentTask = current.rows[0];
-    const newPlannedHours = plannedHours !== undefined ? plannedHours : currentTask.planned_hours;
-    const newHourlyRate = hourlyRate !== undefined ? hourlyRate : currentTask.hourly_rate;
-    const totalCost = newPlannedHours * newHourlyRate;
-
+    // total_cost это generated column, он обновится автоматически
     const result = await pool.query(
       `UPDATE tasks 
        SET name = COALESCE($1, name),
@@ -139,12 +126,11 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
            planned_hours = COALESCE($3, planned_hours),
            actual_hours = COALESCE($4, actual_hours),
            hourly_rate = COALESCE($5, hourly_rate),
-           total_cost = $6,
-           status = COALESCE($7, status),
+           status = COALESCE($6, status),
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $7
        RETURNING *`,
-      [name, description, plannedHours, actualHours, hourlyRate, totalCost, status, id]
+      [name, description, plannedHours, actualHours, hourlyRate, status, id]
     );
 
     res.json(mapTask(result.rows[0]));

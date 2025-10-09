@@ -12,6 +12,7 @@ const mapTimeSlot = (row: any) => ({
   startAtUtc: row.start_at_utc,
   endAtUtc: row.end_at_utc,
   task: row.task,
+  description: row.description,
   plannedHours: parseFloat(row.planned_hours),
   actualHours: parseFloat(row.actual_hours),
   status: row.status,
@@ -103,7 +104,7 @@ export const createTimeSlot = async (req: Request, res: Response): Promise<void>
   try {
     const {
       employeeId, projectId, taskId, date, startTime, endTime, startAtUtc, endAtUtc,
-      task, plannedHours, actualHours, status, category, completedAt,
+      task, description, plannedHours, actualHours, status, category, completedAt,
       parentTaskId, taskSequence, totalTaskHours, isPaused, pausedAt, resumedAt,
       isRecurring, recurrenceType, recurrenceInterval, recurrenceEndDate,
       recurrenceDays, parentRecurringId, recurrenceCount,
@@ -115,21 +116,32 @@ export const createTimeSlot = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+
+    // Фронтенд уже отправляет данные в UTC, просто используем их
+    // Если UTC поля не переданы, используем date + time (уже должны быть в UTC от фронтенда)
+    const finalStartAtUtc = startAtUtc || (startTime ? `${date}T${startTime}Z` : null);
+    const finalEndAtUtc = endAtUtc || (endTime ? `${date}T${endTime}Z` : null);
+    
+    console.log('💾 Saving to DB:', {
+      finalStartAtUtc,
+      finalEndAtUtc,
+    });
+
     const result = await pool.query(
       `INSERT INTO time_slots (
         employee_id, project_id, task_id, date, start_time, end_time, start_at_utc, end_at_utc,
-        task, planned_hours, actual_hours, status, category, completed_at,
+        task, description, planned_hours, actual_hours, status, category, completed_at,
         parent_task_id, task_sequence, total_task_hours, is_paused, paused_at, resumed_at,
         is_recurring, recurrence_type, recurrence_interval, recurrence_end_date,
         recurrence_days, parent_recurring_id, recurrence_count,
         deadline, deadline_type, is_assigned_by_admin, deadline_reason, created_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, NOW()
       ) RETURNING *`,
       [
-        employeeId, projectId, taskId, date, startTime, endTime, startAtUtc, endAtUtc,
-        task, plannedHours || 0, actualHours || 0, status || 'planned', category || 'general', completedAt,
+        employeeId, projectId, taskId, date, startTime, endTime, finalStartAtUtc, finalEndAtUtc,
+        task, description, plannedHours || 0, actualHours || 0, status || 'planned', category || 'general', completedAt,
         parentTaskId, taskSequence, totalTaskHours, isPaused || false, pausedAt, resumedAt,
         isRecurring || false, recurrenceType, recurrenceInterval, recurrenceEndDate,
         recurrenceDays, parentRecurringId, recurrenceCount,
@@ -164,6 +176,7 @@ export const updateTimeSlot = async (req: Request, res: Response): Promise<void>
       startAtUtc: 'start_at_utc',
       endAtUtc: 'end_at_utc',
       task: 'task',
+      description: 'description',
       plannedHours: 'planned_hours',
       actualHours: 'actual_hours',
       status: 'status',

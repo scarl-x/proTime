@@ -181,10 +181,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Подробное описание задачи..."
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                placeholder="Подробное описание задачи...&#10;&#10;Поддерживается Markdown:&#10;**жирный текст**&#10;`код`&#10;```javascript&#10;код с подсветкой&#10;```"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Поддерживается форматирование Markdown и блоки кода
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

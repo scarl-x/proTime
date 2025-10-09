@@ -7,6 +7,7 @@ import { calculateAdvancedDeadline, DEFAULT_PLANNING_FACTOR } from '../utils/dea
 import { canExceedPlannedHoursForSlot, isDeadlinePassed } from '../utils/deadlineUtils';
 import { DisplayTimezoneContext } from '../utils/timezoneContext';
 import { convertSlotToLocal, convertLocalToUtc } from '../utils/timezone';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface TimeSlotModalProps {
   isOpen: boolean;
@@ -946,10 +947,13 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 <textarea
                   value={formData.taskDescription}
                   onChange={(e) => setFormData({ ...formData, taskDescription: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Кратко опишите задачу..."
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  placeholder="Кратко опишите задачу...&#10;&#10;Поддерживается Markdown:&#10;**жирный** `код` ```js&#10;код с подсветкой&#10;```"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Поддерживается форматирование Markdown и блоки кода
+                </p>
               </div>
               <div className="p-3 bg-gray-50 border border-gray-200 rounded">
                 <div className="text-sm text-gray-700">

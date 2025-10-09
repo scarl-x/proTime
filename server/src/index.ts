@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import pool from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import projectsRoutes from './routes/projects.routes.js';
@@ -52,12 +53,27 @@ app.use('/api/bookings', bookingsRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Запуск сервера
-app.listen(PORT, () => {
-  console.log(`\n🚀 Сервер запущен на порту ${PORT}`);
-  console.log(`📍 API доступен по адресу: http://localhost:${PORT}`);
-  console.log(`🌍 Окружение: ${process.env.NODE_ENV || 'development'}\n`);
-});
+// Проверка подключения к базе данных и запуск сервера
+const startServer = async () => {
+  try {
+    // Проверяем подключение к БД
+    await pool.query('SELECT NOW()');
+    console.log('✅ Подключение к базе данных PostgreSQL успешно');
+    
+    // Запускаем сервер
+    app.listen(PORT, () => {
+      console.log(`\n🚀 Сервер запущен на порту ${PORT}`);
+      console.log(`📍 API доступен по адресу: http://localhost:${PORT}`);
+      console.log(`🌍 Окружение: ${process.env.NODE_ENV || 'development'}\n`);
+    });
+  } catch (error) {
+    console.error('❌ Ошибка подключения к базе данных:', error);
+    console.error('💡 Проверьте настройки в файле server/.env');
+    process.exit(1);
+  }
+};
+
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

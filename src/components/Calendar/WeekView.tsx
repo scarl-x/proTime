@@ -46,9 +46,16 @@ export const WeekView: React.FC<WeekViewProps> = ({
     return timeSlots.filter(slot => {
       try {
         const converted = convertSlotToLocal(slot, effectiveZone);
+        // Если конвертация вернула null, используем fallback
+        if (!converted || !converted.date) {
+          const slotDate = slot.date.split('T')[0];
+          return slotDate === date;
+        }
         return converted.date === date;
       } catch (error) {
-        return slot.date === date;
+        // Fallback: сравниваем только даты без времени
+        const slotDate = slot.date.split('T')[0];
+        return slotDate === date;
       }
     });
   };
@@ -63,6 +70,22 @@ export const WeekView: React.FC<WeekViewProps> = ({
   const getSlotStyle = (slot: TimeSlot) => {
     try {
       const converted = convertSlotToLocal(slot, effectiveZone);
+      // Если конвертация вернула null, используем fallback
+      if (!converted || !converted.startTime) {
+        const start = parseInt(slot.startTime?.split(':')[0] || '0');
+        const startMinutes = parseInt(slot.startTime?.split(':')[1] || '0');
+        const duration = slot.actualHours || slot.plannedHours;
+        const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
+        const height = duration * perHourPx;
+        
+        return {
+          top: `${top}px`,
+          height: `${height}px`,
+          left: '4px',
+          right: '4px',
+        };
+      }
+      
       const start = parseInt(converted.startTime.split(':')[0]);
       const startMinutes = parseInt(converted.startTime.split(':')[1] || '0');
       const duration = slot.actualHours || slot.plannedHours;
@@ -77,8 +100,8 @@ export const WeekView: React.FC<WeekViewProps> = ({
       };
     } catch (error) {
       // Fallback на оригинальные значения
-      const start = parseInt(slot.startTime.split(':')[0]);
-      const startMinutes = parseInt(slot.startTime.split(':')[1] || '0');
+      const start = parseInt(slot.startTime?.split(':')[0] || '0');
+      const startMinutes = parseInt(slot.startTime?.split(':')[1] || '0');
       const duration = slot.actualHours || slot.plannedHours;
       const top = (start - START_HOUR) * perHourPx + startMinutes * perMinutePx;
       const height = duration * perHourPx;
