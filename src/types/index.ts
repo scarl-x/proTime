@@ -36,6 +36,7 @@ export interface TimeSlot {
   start_at_utc?: string; // UTC timestamp (основное поле)
   end_at_utc?: string; // UTC timestamp (основное поле)
   task: string;
+  description?: string; // Описание задачи с поддержкой Markdown
   plannedHours: number;
   actualHours: number;
   status: 'planned' | 'in-progress' | 'completed';

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Eye, Edit2, Trash2, Users, Clock, DollarSign, AlertTriangle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Eye, Edit2, Trash2, Users, Clock, DollarSign, AlertTriangle, ChevronRight } from 'lucide-react';
 import { Task, Project, User } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -49,6 +49,22 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'plannedHours' | 'actualHours' | 'createdAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Проверяем, есть ли возможность прокрутки
+  useEffect(() => {
+    const checkScroll = () => {
+      if (tableContainerRef.current) {
+        const { scrollWidth, clientWidth } = tableContainerRef.current;
+        setShowScrollHint(scrollWidth > clientWidth);
+      }
+    };
+
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [tasks]);
 
   const getEmployeeName = (id: string) => {
     return employees.find(emp => emp.id === id)?.name || 'Неизвестный';
@@ -226,14 +242,33 @@ export const TaskList: React.FC<TaskListProps> = ({
         </div>
       </div>
 
+      {/* Подсказка о прокрутке */}
+      {showScrollHint && tasks.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-2">
+          <ChevronRight className="h-5 w-5 text-blue-600 animate-pulse" />
+          <p className="text-sm text-blue-800">
+            <strong>Подсказка:</strong> Прокрутите таблицу вправо, чтобы увидеть все столбцы (перерасход, дата создания, действия)
+          </p>
+        </div>
+      )}
+
       {/* Tasks Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden relative">
+        <div 
+          ref={tableContainerRef}
+          className="overflow-x-auto"
+          onScroll={() => {
+            if (tableContainerRef.current) {
+              const { scrollLeft, scrollWidth, clientWidth } = tableContainerRef.current;
+              setShowScrollHint(scrollLeft + clientWidth < scrollWidth - 10);
+            }
+          }}
+        >
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-80 max-w-xs"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center space-x-1">
@@ -290,14 +325,22 @@ export const TaskList: React.FC<TaskListProps> = ({
                 const overrun = calculateTaskOverrun(task);
                 return (
                   <tr key={task.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 max-w-xs">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div 
+                          className="text-sm font-medium text-gray-900 truncate"
+                          title={task.name.length > 40 ? task.name : undefined}
+                        >
                           {task.name}
                         </div>
-                        <div className="text-sm text-gray-500 truncate max-w-xs">
-                          {task.description}
-                        </div>
+                        {task.description && (
+                          <div 
+                            className="text-sm text-gray-500 truncate"
+                            title={task.description.length > 40 ? task.description : undefined}
+                          >
+                            {task.description}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -369,6 +412,15 @@ export const TaskList: React.FC<TaskListProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Индикатор горизонтальной прокрутки */}
+        {showScrollHint && tasks.length > 0 && (
+          <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none flex items-center justify-end pr-2">
+            <div className="bg-blue-500 text-white rounded-full p-2 shadow-lg animate-pulse">
+              <ChevronRight className="h-5 w-5" />
+            </div>
+          </div>
+        )}
 
         {tasks.length === 0 && (
           <div className="p-8 text-center">

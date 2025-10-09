@@ -7,6 +7,7 @@ import { calculateAdvancedDeadline, DEFAULT_PLANNING_FACTOR } from '../utils/dea
 import { canExceedPlannedHoursForSlot, isDeadlinePassed } from '../utils/deadlineUtils';
 import { DisplayTimezoneContext } from '../utils/timezoneContext';
 import { convertSlotToLocal, convertLocalToUtc } from '../utils/timezone';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface TimeSlotModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     endTime: '17:00',
     task: '',
     taskTitle: '',
-    taskDescription: '',
+    description: '',
     plannedHours: 8,
     actualHours: 0,
     status: 'planned' as 'planned' | 'in-progress' | 'completed',
@@ -120,7 +121,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         endTime: converted.endTime,
         task: slot.task,
         taskTitle: slot.task,
-        taskDescription: '',
+        description: slot.description || '',
         plannedHours: slot.plannedHours,
         actualHours: slot.actualHours,
         status: slot.status,
@@ -169,7 +170,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         endTime: '17:00',
         task: preselectedTask.title,
         taskTitle: preselectedTask.title,
-        taskDescription: preselectedTask.description || '',
+        description: preselectedTask.description || '',
         plannedHours: planned,
         actualHours: 0,
         status: 'planned' as 'planned' | 'in-progress' | 'completed',
@@ -213,7 +214,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
         endTime: '17:00',
         task: '',
         taskTitle: '',
-        taskDescription: '',
+        description: '',
         plannedHours: planned,
         actualHours: 0,
         status: 'planned' as 'planned' | 'in-progress' | 'completed',
@@ -263,7 +264,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       ...utcData,
       task: formData.taskTitle || formData.task || '',
       // Пробрасываем описание для создания связанной задачи в проекте
-      calendarDescription: formData.taskDescription,
+      description: formData.description,
     } as any;
     
     // Проверяем ограничения для задач, назначенных админом
@@ -672,6 +673,14 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
           </div>
         )}
 
+        {/* Описание задачи */}
+        {slot && slot.description && (
+          <div className="mx-6 mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Описание</h4>
+            <MarkdownRenderer content={slot.description} />
+          </div>
+        )}
+
         {/* Предупреждение для задач, назначенных админом */}
         {!canEditPlannedHours && (
           <div className="mx-6 mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
@@ -944,12 +953,15 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                   Описание (необязательно)
                 </label>
                 <textarea
-                  value={formData.taskDescription}
-                  onChange={(e) => setFormData({ ...formData, taskDescription: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Кратко опишите задачу..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  placeholder="Кратко опишите задачу...&#10;&#10;Поддерживается Markdown:&#10;**жирный** `код` ```js&#10;код с подсветкой&#10;```"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Поддерживается форматирование Markdown и блоки кода
+                </p>
               </div>
               <div className="p-3 bg-gray-50 border border-gray-200 rounded">
                 <div className="text-sm text-gray-700">
