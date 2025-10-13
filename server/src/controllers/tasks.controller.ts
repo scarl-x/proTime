@@ -10,6 +10,7 @@ const mapTask = (row: any) => ({
   actualHours: parseFloat(row.actual_hours),
   hourlyRate: parseFloat(row.hourly_rate),
   contractHours: row.contract_hours != null ? parseFloat(row.contract_hours) : undefined,
+  sprintType: row.sprint_type || 'backlog',
   totalCost: parseFloat(row.total_cost),
   status: row.status,
   createdBy: row.created_by,
@@ -73,7 +74,21 @@ export const getTaskById = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    res.json(mapTask(result.rows[0]));
+    const updatedTask = mapTask(result.rows[0]);
+
+    // Двусторонняя синхронизация: если статус задачи обновлен, обновим статусы связанных слотов
+    if (status) {
+      let slotStatus: 'planned' | 'in-progress' | 'completed' | null = null;
+      if (status === 'in-progress') slotStatus = 'in-progress';
+      else if (status === 'closed') slotStatus = 'completed';
+      else if (status === 'planned' || status === 'new') slotStatus = 'planned';
+
+      if (slotStatus) {
+        await pool.query(`UPDATE time_slots SET status = $1 WHERE task_id = $2`, [slotStatus, id]);
+      }
+    }
+
+    res.json(updatedTask);
   } catch (error) {
     console.error('Get task error:', error);
     res.status(500).json({ error: 'Ошибка получения задачи' });
@@ -84,7 +99,7 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
   try {
     const {
       projectId, name, description, plannedHours, actualHours,
-      hourlyRate, status, createdBy, contractHours
+      hourlyRate, status, createdBy, contractHours, sprintType
     } = req.body;
 
     if (!projectId || !name || !createdBy) {
@@ -96,12 +111,12 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
     const result = await pool.query(
       `INSERT INTO tasks (
         project_id, name, description, planned_hours, actual_hours,
-        hourly_rate, contract_hours, status, created_by, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        hourly_rate, contract_hours, sprint_type, status, created_by, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
       RETURNING *`,
       [
         projectId, name, description || '', plannedHours || 0, actualHours || 0,
-        hourlyRate || 0, contractHours, status || 'new', createdBy
+        hourlyRate || 0, contractHours, sprintType || 'backlog', status || 'new', createdBy
       ]
     );
 
@@ -116,7 +131,7 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const {
-      name, description, plannedHours, actualHours, hourlyRate, status, contractHours
+      name, description, plannedHours, actualHours, hourlyRate, status, contractHours, sprintType
     } = req.body;
 
     // total_cost это generated column, он обновится автоматически
@@ -128,11 +143,12 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
            actual_hours = COALESCE($4, actual_hours),
            hourly_rate = COALESCE($5, hourly_rate),
            contract_hours = COALESCE($6, contract_hours),
-           status = COALESCE($7, status),
+           sprint_type = COALESCE($7, sprint_type),
+           status = COALESCE($8, status),
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $9
        RETURNING *`,
-      [name, description, plannedHours, actualHours, hourlyRate, contractHours, status, id]
+      [name, description, plannedHours, actualHours, hourlyRate, contractHours, sprintType, status, id]
     );
 
     res.json(mapTask(result.rows[0]));

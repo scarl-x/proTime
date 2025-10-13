@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   actual_hours NUMERIC(10,2) DEFAULT 0,
   hourly_rate NUMERIC(10,2) DEFAULT 0,
   contract_hours NUMERIC(10,2),
+  sprint_type TEXT CHECK (sprint_type IN ('backlog','week','month')) DEFAULT 'backlog',
   total_cost NUMERIC(10,2) DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('new', 'planned', 'in-progress', 'code-review', 'testing-internal', 'testing-client', 'closed')) DEFAULT 'new',
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

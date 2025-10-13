@@ -172,6 +172,7 @@ export interface Task {
   actualHours: number;
   hourlyRate: number;
   contractHours?: number;
+  sprintType?: 'backlog' | 'week' | 'month';
   totalCost: number;
   status: 'new' | 'planned' | 'in-progress' | 'code-review' | 'testing-internal' | 'testing-client' | 'closed';
   createdBy: string;

@@ -226,7 +226,24 @@ export const updateTimeSlot = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    res.json(mapTimeSlot(result.rows[0]));
+    const updated = mapTimeSlot(result.rows[0]);
+
+    // Двусторонняя синхронизация: обновим статус задачи на основе слотов
+    if (updated.taskId && updates.status !== undefined) {
+      const slotsRes = await pool.query(
+        'SELECT status FROM time_slots WHERE task_id = $1',
+        [updated.taskId]
+      );
+      const statuses: string[] = slotsRes.rows.map((r: any) => r.status);
+      let newTaskStatus: 'planned' | 'in-progress' | 'closed' = 'planned';
+      if (statuses.every(s => s === 'completed')) newTaskStatus = 'closed';
+      else if (statuses.some(s => s === 'in-progress')) newTaskStatus = 'in-progress';
+      else newTaskStatus = 'planned';
+
+      await pool.query('UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2', [newTaskStatus, updated.taskId]);
+    }
+
+    res.json(updated);
   } catch (error) {
     console.error('Update time slot error:', error);
     res.status(500).json({ error: 'Ошибка обновления временного слота' });

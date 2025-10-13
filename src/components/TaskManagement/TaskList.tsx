@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Eye, Edit2, Trash2, Users, Clock, DollarSign, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Plus, Eye, Edit2, Trash2, Users, Clock, DollarSign, AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { UiPreferencesContext } from '../../utils/uiPreferencesContext';
 import { Task, Project, User } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
@@ -14,6 +14,7 @@ interface TaskListProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   calculateTaskOverrun: (task: Task) => number;
+  onUpdateTask?: (id: string, updates: Partial<Task>) => void;
 }
 
 const STATUS_LABELS = {
@@ -46,6 +47,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onEditTask,
   onDeleteTask,
   calculateTaskOverrun,
+  onUpdateTask,
 }) => {
   const { hideExtended, setHideExtended } = React.useContext(UiPreferencesContext);
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'plannedHours' | 'actualHours' | 'createdAt'>('createdAt');
@@ -53,6 +55,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showScrollHint, setShowScrollHint] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [menuTaskId, setMenuTaskId] = useState<string | null>(null);
 
   // Проверяем, есть ли возможность прокрутки
   useEffect(() => {
@@ -120,6 +123,20 @@ export const TaskList: React.FC<TaskListProps> = ({
   const totalOverrun = filteredTasks.reduce((sum, task) => sum + calculateTaskOverrun(task), 0);
   const isAdmin = currentUser.role === 'admin';
 
+  // Sprint tabs
+  const [activeSprintTab, setActiveSprintTab] = useState<'backlog' | 'week' | 'month'>('backlog');
+  const tasksBySprint = {
+    backlog: tasks.filter(t => (t.sprintType || 'backlog') === 'backlog'),
+    week: tasks.filter(t => t.sprintType === 'week'),
+    month: tasks.filter(t => t.sprintType === 'month'),
+  };
+
+  const handleDropToSprint = (task: Task, sprint: 'backlog' | 'week' | 'month') => {
+    if (onUpdateTask && task.sprintType !== sprint) {
+      onUpdateTask(task.id, { sprintType: sprint });
+    }
+  };
+
   // Проектные метрики: договор / план / факт и разницы
   const contractHours = (project as any).contractHours ?? 0;
   const plannedProjectHours = tasks.reduce((sum, t) => sum + (t.plannedHours || 0), 0);
@@ -161,6 +178,23 @@ export const TaskList: React.FC<TaskListProps> = ({
             <Plus className="h-4 w-4" />
             <span>Создать задачу</span>
           </button>
+        </div>
+      </div>
+
+      {/* Sprint Tabs (top, wide) */}
+      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+        <div className="flex items-center justify-center">
+          <div className="flex bg-gray-100 rounded-xl p-1 w-full max-w-3xl">
+            {(['backlog','month','week'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveSprintTab(tab)}
+                className={`flex-1 px-4 py-2 text-sm sm:text-base font-medium rounded-lg transition text-center ${activeSprintTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                {tab === 'backlog' ? 'Бэклог' : tab === 'week' ? 'Спринт (неделя)' : 'Спринт (месяц)'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -366,7 +400,15 @@ export const TaskList: React.FC<TaskListProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {sortedTasks.map((task) => {
+              {sortedTasks
+                .filter(t => {
+                  const sprint = t.sprintType || 'backlog';
+                  if (activeSprintTab === 'backlog') return sprint === 'backlog';
+                  if (activeSprintTab === 'week') return sprint === 'week';
+                  // month: показываем и месяц, и неделю
+                  return sprint === 'month' || sprint === 'week';
+                })
+                .map((task) => {
                 const overrun = calculateTaskOverrun(task);
                 return (
                   <tr key={task.id} className="hover:bg-gray-50">
@@ -425,11 +467,48 @@ export const TaskList: React.FC<TaskListProps> = ({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end space-x-2 relative">
                         {!task.contractHours && (
                           <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200" title="Требуется заполнить часы по договору администратором">
                             Нужны часы по договору
                           </span>
+                        )}
+                        {onUpdateTask && (
+                          task.sprintType === 'month' ? (
+                            <div className="relative">
+                              <button
+                                onClick={() => setMenuTaskId(menuTaskId === task.id ? null : task.id)}
+                                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+                                title="Действия со спринтом"
+                              >
+                                <ChevronRight className="h-4 w-4 rotate-90" />
+                              </button>
+                              {menuTaskId === task.id && (
+                                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                  <button
+                                    onClick={() => { onUpdateTask(task.id, { sprintType: 'week' }); setMenuTaskId(null); }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                                  >
+                                    Отправить в план недели
+                                  </button>
+                                  <button
+                                    onClick={() => { onUpdateTask(task.id, { sprintType: 'backlog' }); setMenuTaskId(null); }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-b-lg"
+                                  >
+                                    Вернуть в бэклог
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => onUpdateTask(task.id, { sprintType: 'month' })}
+                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+                              title="Отправить в план месяца"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          )
                         )}
                         <button
                           onClick={() => onViewTask(task)}
