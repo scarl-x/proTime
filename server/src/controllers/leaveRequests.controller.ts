@@ -13,6 +13,7 @@ const mapLeaveRequest = (row: any) => ({
   approvedBy: row.approved_by,
   approvedAt: row.approved_at,
   notes: row.notes,
+  worked: row.worked,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -106,7 +107,7 @@ export const updateLeaveRequest = async (req: Request, res: Response): Promise<v
   try {
     const { id } = req.params;
     const {
-      type, startDate, endDate, daysCount, reason, status, notes
+      type, startDate, endDate, daysCount, reason, status, notes, worked
     } = req.body;
 
     const result = await pool.query(
@@ -118,10 +119,11 @@ export const updateLeaveRequest = async (req: Request, res: Response): Promise<v
            reason = COALESCE($5, reason),
            status = COALESCE($6, status),
            notes = COALESCE($7, notes),
+           worked = COALESCE($8, worked),
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $9
        RETURNING *`,
-      [type, startDate, endDate, daysCount, reason, status, notes, id]
+      [type, startDate, endDate, daysCount, reason, status, notes, worked, id]
     );
 
     if (result.rows.length === 0) {

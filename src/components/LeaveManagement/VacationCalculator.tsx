@@ -107,7 +107,7 @@ export const VacationCalculator: React.FC<VacationCalculatorProps> = ({
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Калькулятор отпускного баланса</h2>
           <p className="text-gray-600 mt-1">
-            Расчет согласно Трудовому кодексу РФ (28 дней в год)
+            Расчет накопленных дней отпуска (28 дней в год)
           </p>
         </div>
       </div>
@@ -366,7 +366,7 @@ export const VacationCalculator: React.FC<VacationCalculatorProps> = ({
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <div className="flex items-center space-x-2 mb-2">
                 <Info className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">Формула расчета (ТК РФ)</span>
+                <span className="text-sm font-medium text-blue-900">Формула расчета</span>
               </div>
               <div className="text-sm text-blue-800 space-y-1">
                 <p><strong>Баланс = Начислено - Использовано</strong></p>
@@ -467,7 +467,7 @@ export const VacationCalculator: React.FC<VacationCalculatorProps> = ({
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="flex items-center space-x-2 mb-3">
               <Info className="h-5 w-5 text-gray-600" />
-              <h4 className="text-sm font-medium text-gray-900">Справочная информация (ТК РФ)</h4>
+              <h4 className="text-sm font-medium text-gray-900">Справочная информация</h4>
             </div>
             <div className="text-sm text-gray-700 space-y-2">
               <p>• <strong>Право на отпуск:</strong> После 6 месяцев непрерывной работы</p>

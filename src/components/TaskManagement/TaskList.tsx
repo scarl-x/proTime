@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Eye, Edit2, Trash2, Users, Clock, DollarSign, AlertTriangle, ChevronRight } from 'lucide-react';
+import { UiPreferencesContext } from '../../utils/uiPreferencesContext';
 import { Task, Project, User } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -46,6 +47,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onDeleteTask,
   calculateTaskOverrun,
 }) => {
+  const { hideExtended, setHideExtended } = React.useContext(UiPreferencesContext);
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'plannedHours' | 'actualHours' | 'createdAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -116,11 +118,19 @@ export const TaskList: React.FC<TaskListProps> = ({
   const totalActualHours = filteredTasks.reduce((sum, task) => sum + task.actualHours, 0);
   const totalCost = filteredTasks.reduce((sum, task) => sum + task.totalCost, 0);
   const totalOverrun = filteredTasks.reduce((sum, task) => sum + calculateTaskOverrun(task), 0);
+  const isAdmin = currentUser.role === 'admin';
+
+  // Проектные метрики: договор / план / факт и разницы
+  const contractHours = (project as any).contractHours ?? 0;
+  const plannedProjectHours = tasks.reduce((sum, t) => sum + (t.plannedHours || 0), 0);
+  const actualProjectHours = tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
+  const diffContractPlan = contractHours - plannedProjectHours;
+  const diffPlanActual = plannedProjectHours - actualProjectHours;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
             Задачи проекта: {project.name}
@@ -129,13 +139,29 @@ export const TaskList: React.FC<TaskListProps> = ({
             Управление задачами и распределение по сотрудникам
           </p>
         </div>
-        <button
-          onClick={onCreateTask}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Создать задачу</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Тумблер Расширенная информация (на странице проекта) */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm">
+            <span className="text-sm text-gray-700">Расширенная информация</span>
+            <button
+              type="button"
+              onClick={() => setHideExtended(!hideExtended)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${!hideExtended ? 'bg-blue-600' : 'bg-gray-300'}`}
+              aria-pressed={!hideExtended}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ${!hideExtended ? 'translate-x-5' : 'translate-x-1'}`}
+              />
+            </button>
+          </div>
+          <button
+            onClick={onCreateTask}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Создать задачу</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -199,16 +225,16 @@ export const TaskList: React.FC<TaskListProps> = ({
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Плановые часы</p>
-              <p className="text-2xl font-bold text-gray-900">{totalPlannedHours}ч</p>
+              <p className="text-sm text-gray-600">Часы по договору</p>
+              <p className="text-2xl font-bold text-gray-900">{contractHours}ч</p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <Clock className="h-6 w-6 text-green-600" />
+            <div className="bg-blue-100 p-3 rounded-full">
+              <Clock className="h-6 w-6 text-blue-600" />
             </div>
           </div>
           <div className="mt-2">
-            <p className="text-xs text-gray-500">
-              Факт: {totalActualHours}ч
+            <p className={`text-xs ${diffContractPlan === 0 ? 'text-gray-500' : diffContractPlan > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              Разница с планом: {diffContractPlan > 0 ? '+' : ''}{diffContractPlan}ч
             </p>
           </div>
         </div>
@@ -216,30 +242,47 @@ export const TaskList: React.FC<TaskListProps> = ({
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Общая стоимость</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {totalCost.toLocaleString('ru-RU')} ₽
-              </p>
+              <p className="text-sm text-gray-600">План часов</p>
+              <p className="text-2xl font-bold text-gray-900">{plannedProjectHours}ч</p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <DollarSign className="h-6 w-6 text-purple-600" />
+            <div className="bg-indigo-100 p-3 rounded-full">
+              <Clock className="h-6 w-6 text-indigo-600" />
             </div>
+          </div>
+          <div className="mt-2">
+            <p className={`text-xs ${diffPlanActual === 0 ? 'text-gray-500' : diffPlanActual > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+              Разница с фактом: {diffPlanActual > 0 ? '+' : ''}{diffPlanActual}ч
+            </p>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Перерасход</p>
-              <p className={`text-2xl font-bold ${totalOverrun > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {totalOverrun}ч
-              </p>
+              <p className="text-sm text-gray-600">Факт часы</p>
+              <p className="text-2xl font-bold text-gray-900">{actualProjectHours}ч</p>
             </div>
-            <div className={`p-3 rounded-full ${totalOverrun > 0 ? 'bg-red-100' : 'bg-green-100'}`}>
-              <AlertTriangle className={`h-6 w-6 ${totalOverrun > 0 ? 'text-red-600' : 'text-green-600'}`} />
+            <div className="bg-green-100 p-3 rounded-full">
+              <Clock className="h-6 w-6 text-green-600" />
             </div>
           </div>
         </div>
+
+        {isAdmin && !hideExtended && (
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Общая стоимость</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {totalCost.toLocaleString('ru-RU')} ₽
+                </p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-full">
+                <DollarSign className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Подсказка о прокрутке */}
@@ -306,9 +349,11 @@ export const TaskList: React.FC<TaskListProps> = ({
                     )}
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Стоимость
-                </th>
+                {isAdmin && !hideExtended && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Стоимость
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Перерасход
                 </th>
@@ -356,14 +401,16 @@ export const TaskList: React.FC<TaskListProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {task.totalCost.toLocaleString('ru-RU')} ₽
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {task.hourlyRate.toLocaleString('ru-RU')} ₽/ч
-                      </div>
-                    </td>
+                    {isAdmin && !hideExtended && (
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {task.totalCost.toLocaleString('ru-RU')} ₽
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {task.hourlyRate.toLocaleString('ru-RU')} ₽/ч
+                        </div>
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <span className={`text-sm font-medium ${overrun > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {overrun > 0 ? `+${overrun}ч` : '0ч'}
@@ -379,6 +426,11 @@ export const TaskList: React.FC<TaskListProps> = ({
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        {!task.contractHours && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200" title="Требуется заполнить часы по договору администратором">
+                            Нужны часы по договору
+                          </span>
+                        )}
                         <button
                           onClick={() => onViewTask(task)}
                           className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"

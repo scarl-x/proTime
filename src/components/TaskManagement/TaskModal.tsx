@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Clock, FileText, Tag, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, DollarSign, Clock, FileText, Tag, Zap, Bold, Italic, List, ListOrdered, Link, Code, Heading1, Heading2, Quote } from 'lucide-react';
+import { UiPreferencesContext } from '../../utils/uiPreferencesContext';
 import { Task, TaskCategory } from '../../types';
 
 interface TaskModalProps {
@@ -10,6 +11,7 @@ interface TaskModalProps {
   projectId: string;
   currentUserId: string;
   categories?: TaskCategory[];
+  currentUserRole?: string;
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -20,7 +22,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   projectId,
   currentUserId,
   categories = [],
+  currentUserRole,
 }) => {
+  const { hideExtended } = React.useContext(UiPreferencesContext);
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -28,15 +32,33 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     document.addEventListener('keydown', onEsc);
     return () => document.removeEventListener('keydown', onEsc);
   }, [onClose]);
+
+  // Обработка горячих клавиш для форматирования
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        insertFormatting('**', '**', 'жирный текст');
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        insertFormatting('*', '*', 'курсив');
+      } else if (e.key === 'k') {
+        e.preventDefault();
+        insertFormatting('[', '](url)', 'текст ссылки');
+      }
+    }
+  };
   const [formData, setFormData] = useState({
     categoryId: '',
     name: '',
     description: '',
     plannedHours: 0,
     hourlyRate: 3500,
+    contractHours: undefined as number | undefined,
     status: 'new' as Task['status'],
   });
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory | null>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (task) {
@@ -46,6 +68,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         description: task.description,
         plannedHours: task.plannedHours,
         hourlyRate: task.hourlyRate,
+        contractHours: task.contractHours,
         status: task.status,
       });
     } else {
@@ -55,6 +78,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         description: '',
         plannedHours: 0,
         hourlyRate: 3500,
+        contractHours: undefined,
         status: 'new',
       });
     }
@@ -79,6 +103,33 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         categoryId: '',
       }));
     }
+  };
+
+  // Функция для вставки форматирования в textarea
+  const insertFormatting = (before: string, after: string = '', placeholder: string = '') => {
+    const textarea = descriptionRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.description.substring(start, end);
+    const textToInsert = selectedText || placeholder;
+
+    const newText =
+      formData.description.substring(0, start) +
+      before +
+      textToInsert +
+      after +
+      formData.description.substring(end);
+
+    setFormData({ ...formData, description: newText });
+
+    // Установить курсор после вставленного текста
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + before.length + textToInsert.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -173,20 +224,111 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               />
             </div>
 
-            {/* Description */}
+            {/* Description with Formatting Toolbar */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Описание
               </label>
+              
+              {/* Formatting Toolbar */}
+              <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border border-gray-300 rounded-t-lg border-b-0">
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('**', '**', 'жирный текст')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Жирный (Ctrl+B)"
+                >
+                  <Bold className="h-4 w-4 text-gray-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('*', '*', 'курсив')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Курсив (Ctrl+I)"
+                >
+                  <Italic className="h-4 w-4 text-gray-700" />
+                </button>
+                <div className="w-px bg-gray-300 mx-1"></div>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('# ', '', 'Заголовок 1')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Заголовок 1"
+                >
+                  <Heading1 className="h-4 w-4 text-gray-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('## ', '', 'Заголовок 2')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Заголовок 2"
+                >
+                  <Heading2 className="h-4 w-4 text-gray-700" />
+                </button>
+                <div className="w-px bg-gray-300 mx-1"></div>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('- ', '', 'Элемент списка')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Маркированный список"
+                >
+                  <List className="h-4 w-4 text-gray-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('1. ', '', 'Элемент списка')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Нумерованный список"
+                >
+                  <ListOrdered className="h-4 w-4 text-gray-700" />
+                </button>
+                <div className="w-px bg-gray-300 mx-1"></div>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('`', '`', 'код')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Инлайн код"
+                >
+                  <Code className="h-4 w-4 text-gray-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('```\n', '\n```', 'блок кода')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors font-mono text-xs px-3"
+                  title="Блок кода"
+                >
+                  {'{ }'}
+                </button>
+                <div className="w-px bg-gray-300 mx-1"></div>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('[', '](url)', 'текст ссылки')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Ссылка"
+                >
+                  <Link className="h-4 w-4 text-gray-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormatting('> ', '', 'цитата')}
+                  className="p-2 hover:bg-gray-200 rounded transition-colors"
+                  title="Цитата"
+                >
+                  <Quote className="h-4 w-4 text-gray-700" />
+                </button>
+              </div>
+              
               <textarea
+                ref={descriptionRef}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                placeholder="Подробное описание задачи...&#10;&#10;Поддерживается Markdown:&#10;**жирный текст**&#10;`код`&#10;```javascript&#10;код с подсветкой&#10;```"
+                onKeyDown={handleKeyDown}
+                rows={8}
+                className="w-full px-3 py-2 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none"
+                placeholder="Подробное описание задачи...&#10;&#10;Используйте кнопки форматирования выше или Markdown:&#10;**жирный текст**, *курсив*, `код`"
               />
               <p className="text-xs text-gray-500 mt-1">
-                💡 Поддерживается форматирование Markdown и блоки кода
+                💡 Используйте панель инструментов или горячие клавиши: <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Ctrl+B</kbd> жирный, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Ctrl+I</kbd> курсив, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Ctrl+K</kbd> ссылка
               </p>
             </div>
 
@@ -227,6 +369,28 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 />
               </div>
 
+              {/* Contract Hours - admin only */}
+              {currentUserRole === 'admin' && (
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Часы по договору</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={formData.contractHours ?? ''}
+                    onChange={(e) => setFormData({ ...formData, contractHours: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Напр. 120"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Устанавливается администратором
+                  </p>
+                </div>
+              )}
+
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -248,41 +412,45 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </div>
 
 
-              {/* Total Cost (calculated) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Общая стоимость
-                </label>
-                <div className="px-3 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium">
-                  {calculateTotalCost().toLocaleString('ru-RU')} ₽
+              {/* Total Cost (calculated) - only for admin */}
+              {currentUserRole === 'admin' && !hideExtended && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Общая стоимость
+                  </label>
+                  <div className="px-3 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium">
+                    {calculateTotalCost().toLocaleString('ru-RU')} ₽
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Автоматически рассчитывается
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Автоматически рассчитывается
-                </p>
-              </div>
+              )}
             </div>
 
 
-            {/* Cost Breakdown */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">
-                Расчет стоимости
-              </h4>
-              <div className="text-sm text-blue-800 space-y-1">
-                <div className="flex justify-between">
-                  <span>Плановые часы:</span>
-                  <span>{formData.plannedHours}ч</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Ставка за час:</span>
-                  <span>{formData.hourlyRate.toLocaleString('ru-RU')} ₽</span>
-                </div>
-                <div className="flex justify-between font-medium border-t border-blue-300 pt-1">
-                  <span>Итого:</span>
-                  <span>{calculateTotalCost().toLocaleString('ru-RU')} ₽</span>
+            {/* Cost Breakdown - only for admin */}
+            {currentUserRole === 'admin' && !hideExtended && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-900 mb-2">
+                  Расчет стоимости
+                </h4>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Плановые часы:</span>
+                    <span>{formData.plannedHours}ч</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Ставка за час:</span>
+                    <span>{formData.hourlyRate.toLocaleString('ru-RU')} ₽</span>
+                  </div>
+                  <div className="flex justify-between font-medium border-t border-blue-300 pt-1">
+                    <span>Итого:</span>
+                    <span>{calculateTotalCost().toLocaleString('ru-RU')} ₽</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Actions */}

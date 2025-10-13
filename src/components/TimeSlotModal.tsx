@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { X, Clock, User, Tag, Calendar, Split, Pause, Play, AlertCircle, Repeat, Info } from 'lucide-react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { X, Clock, User, Tag, Calendar, Split, Pause, Play, AlertCircle, Repeat, Info, Bold, Italic, List, ListOrdered, Link, Code, Heading1, Heading2, Quote } from 'lucide-react';
 import { TimeSlot, User as UserType, Project, TaskCategory } from '../types';
 import { RecurringTaskConfig, generateRecurringTasks, getRecurrenceDescription, WEEKDAY_NAMES } from '../utils/recurringUtils';
 import { formatDate } from '../utils/dateUtils';
@@ -55,6 +55,49 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
     document.addEventListener('keydown', onEsc);
     return () => document.removeEventListener('keydown', onEsc);
   }, [onClose]);
+
+  // Функция для вставки форматирования в textarea
+  const insertFormatting = (before: string, after: string = '', placeholder: string = '') => {
+    const textarea = descriptionRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.taskDescription.substring(start, end);
+    const textToInsert = selectedText || placeholder;
+
+    const newText =
+      formData.taskDescription.substring(0, start) +
+      before +
+      textToInsert +
+      after +
+      formData.taskDescription.substring(end);
+
+    setFormData({ ...formData, taskDescription: newText });
+
+    // Установить курсор после вставленного текста
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + before.length + textToInsert.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  // Обработка горячих клавиш для форматирования
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') {
+        e.preventDefault();
+        insertFormatting('**', '**', 'жирный текст');
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        insertFormatting('*', '*', 'курсив');
+      } else if (e.key === 'k') {
+        e.preventDefault();
+        insertFormatting('[', '](url)', 'текст ссылки');
+      }
+    }
+  };
   const [formData, setFormData] = useState({
     employeeId: currentUser.id,
     projectId: '',
@@ -99,6 +142,7 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
   const [plannedHoursError, setPlannedHoursError] = useState<string>('');
   const [isEditingSplitTask, setIsEditingSplitTask] = useState(false);
   const [splitTaskParts, setSplitTaskParts] = useState<TimeSlot[]>([]);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   const ctxZone = useContext(DisplayTimezoneContext);
   const effectiveZone = ctxZone || currentUser.timezone || ((): string => {
@@ -944,15 +988,106 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Описание (необязательно)
                 </label>
+                
+                {/* Formatting Toolbar */}
+                <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border border-gray-300 rounded-t-lg border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('**', '**', 'жирный текст')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Жирный (Ctrl+B)"
+                  >
+                    <Bold className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('*', '*', 'курсив')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Курсив (Ctrl+I)"
+                  >
+                    <Italic className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <div className="w-px bg-gray-300 mx-1"></div>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('# ', '', 'Заголовок 1')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Заголовок 1"
+                  >
+                    <Heading1 className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('## ', '', 'Заголовок 2')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Заголовок 2"
+                  >
+                    <Heading2 className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <div className="w-px bg-gray-300 mx-1"></div>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('- ', '', 'Элемент списка')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Маркированный список"
+                  >
+                    <List className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('1. ', '', 'Элемент списка')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Нумерованный список"
+                  >
+                    <ListOrdered className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <div className="w-px bg-gray-300 mx-1"></div>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('`', '`', 'код')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Инлайн код"
+                  >
+                    <Code className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('```\n', '\n```', 'блок кода')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors font-mono text-xs px-3"
+                    title="Блок кода"
+                  >
+                    {'{ }'}
+                  </button>
+                  <div className="w-px bg-gray-300 mx-1"></div>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('[', '](url)', 'текст ссылки')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Ссылка"
+                  >
+                    <Link className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('> ', '', 'цитата')}
+                    className="p-2 hover:bg-gray-200 rounded transition-colors"
+                    title="Цитата"
+                  >
+                    <Quote className="h-4 w-4 text-gray-700" />
+                  </button>
+                </div>
+                
                 <textarea
+                  ref={descriptionRef}
                   value={formData.taskDescription}
                   onChange={(e) => setFormData({ ...formData, taskDescription: e.target.value })}
-                  rows={5}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                  placeholder="Кратко опишите задачу...&#10;&#10;Поддерживается Markdown:&#10;**жирный** `код` ```js&#10;код с подсветкой&#10;```"
+                  onKeyDown={handleKeyDown}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none"
+                  placeholder="Кратко опишите задачу...&#10;&#10;Используйте кнопки форматирования выше или Markdown:&#10;**жирный текст**, *курсив*, `код`"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 Поддерживается форматирование Markdown и блоки кода
+                  💡 Используйте панель инструментов или горячие клавиши: <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Ctrl+B</kbd> жирный, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Ctrl+I</kbd> курсив, <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Ctrl+K</kbd> ссылка
                 </p>
               </div>
               <div className="p-3 bg-gray-50 border border-gray-200 rounded">

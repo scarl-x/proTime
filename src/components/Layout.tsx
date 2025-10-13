@@ -7,6 +7,7 @@ import logoUrl from '/brand/proyavlenie_03.png';
 import { User } from '../types';
 import { NotificationCenter } from './Notifications/NotificationCenter';
 import { TimezoneSelector } from './TimezoneSelector';
+import { UiPreferencesContext } from '../utils/uiPreferencesContext';
 
 interface LayoutProps {
   user: User;
@@ -49,6 +50,14 @@ export const Layout: React.FC<LayoutProps> = ({
   updateTimezone,
 }) => {
   const [localTime, setLocalTime] = useState<string>('');
+  const [hideExtended, setHideExtended] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem('ui:hideExtended');
+      return raw ? JSON.parse(raw) : true;
+    } catch {
+      return true;
+    }
+  });
 
   // Эффективная timezone: user.profile -> system fallback
   const effectiveZone = useMemo(() => {
@@ -87,6 +96,12 @@ export const Layout: React.FC<LayoutProps> = ({
     const id = setInterval(formatTime, 60 * 1000);
     return () => clearInterval(id);
   }, [effectiveZone]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ui:hideExtended', JSON.stringify(hideExtended));
+    } catch {}
+  }, [hideExtended]);
 
   // Обработчик смены timezone
   const handleTimezoneChange = async (timezone: string) => {
@@ -198,7 +213,16 @@ export const Layout: React.FC<LayoutProps> = ({
         { id: 'my-requests', label: 'Мои запросы', icon: Send },
       ]
     },
-    { id: 'leave-requests', label: 'Мои отпуска', icon: Plane },
+    {
+      id: 'leave-group',
+      label: 'Отпуска',
+      icon: Plane,
+      subTabs: [
+        { id: 'leave-requests', label: 'Мои отпуска', icon: Plane },
+        { id: 'leave-balance', label: 'Баланс отпусков', icon: Plane },
+        { id: 'leave-calendar', label: 'Календарь отпусков', icon: Plane },
+      ]
+    },
     { id: 'timesheet', label: 'Табель', icon: Clock },
   ];
 
@@ -287,6 +311,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   onTimezoneChange={handleTimezoneChange}
                 />
               </div>
+
+              {/* Тумблер перенесен на вкладку Проекты */}
                 <NotificationCenter
                   timeSlots={timeSlots}
                   employees={employees}
@@ -389,11 +415,13 @@ export const Layout: React.FC<LayoutProps> = ({
       {(() => {
         const zone = effectiveZone;
         return (
-          <DisplayTimezoneContext.Provider value={zone}>
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          {children}
-        </main>
-          </DisplayTimezoneContext.Provider>
+          <UiPreferencesContext.Provider value={{ hideExtended, setHideExtended }}>
+            <DisplayTimezoneContext.Provider value={zone}>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            {children}
+          </main>
+            </DisplayTimezoneContext.Provider>
+          </UiPreferencesContext.Provider>
         );
       })()}
     </div>

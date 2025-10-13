@@ -7,3 +7,4 @@ ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS description TEXT;
 -- Комментарий к полю
 COMMENT ON COLUMN time_slots.description IS 'Описание задачи с поддержкой Markdown форматирования';
 
+

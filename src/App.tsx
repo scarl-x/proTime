@@ -116,7 +116,7 @@ function App() {
     updateCategory,
     deleteCategory,
     getActiveCategories,
-  } = useTaskCategories();
+  } = useTaskCategories(user?.id);
 
   // Удалено: логика дейликов
 
@@ -613,6 +613,8 @@ function App() {
           <ProjectManagement
             projects={projects}
             employees={allUsers}
+            tasks={tasks}
+            timeSlots={getAllTimeSlots(bookings)}
             onAddProject={addProject}
             onUpdateProject={updateProject}
             onDeleteProject={deleteProject}
@@ -678,6 +680,7 @@ function App() {
             onUpdateCategory={updateCategory}
             onDeleteCategory={deleteCategory}
             currentUserId={user.id}
+            currentUserRole={user.role}
           />
         );
 
@@ -863,7 +866,9 @@ function App() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Календарь отпусков</h2>
                 <p className="text-gray-600 mt-1">
-                  Визуальный обзор всех отпусков и больничных
+                  {user.role === 'admin' 
+                    ? 'Визуальный обзор всех отпусков и больничных' 
+                    : 'Визуальный обзор ваших отпусков и больничных'}
                 </p>
               </div>
             </div>
@@ -871,6 +876,7 @@ function App() {
               currentDate={currentDate}
               leaveRequests={leaveRequests}
               employees={allUsers}
+              currentUser={user}
             />
           </div>
         );
@@ -968,6 +974,7 @@ function App() {
         projectId={selectedProjectForTasks?.id || ''}
         currentUserId={user.id}
         categories={getActiveCategories()}
+        currentUserRole={user.role}
       />
 
       {selectedTaskForDetail && (

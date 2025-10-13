@@ -23,6 +23,8 @@ export interface Project {
   createdAt: string;
   teamLeadId?: string; // Тим-лид проекта (userId)
   teamMembers: string[]; // ID сотрудников
+  // Новая метрика: часы по договору с заказчиком
+  contractHours?: number;
 }
 
 export interface TimeSlot {
@@ -169,6 +171,7 @@ export interface Task {
   plannedHours: number;
   actualHours: number;
   hourlyRate: number;
+  contractHours?: number;
   totalCost: number;
   status: 'new' | 'planned' | 'in-progress' | 'code-review' | 'testing-internal' | 'testing-client' | 'closed';
   createdBy: string;

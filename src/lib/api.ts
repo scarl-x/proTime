@@ -21,10 +21,11 @@ export const removeToken = (): void => {
 // Базовый fetch с обработкой ошибок и авторизацией
 const apiFetch = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
   const token = getToken();
-  
-  const headers: HeadersInit = {
+
+  // Используем явный словарь заголовков, чтобы безопасно добавлять Authorization
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   if (token) {

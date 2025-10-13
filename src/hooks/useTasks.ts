@@ -8,8 +8,17 @@ export const useTasks = () => {
 
   useEffect(() => {
     loadTasks();
-    loadAllTaskAssignments();
   }, []);
+
+  // После загрузки задач подгружаем назначения
+  useEffect(() => {
+    if (tasks.length > 0) {
+      loadAllTaskAssignments();
+    } else {
+      // Если задач нет, очищаем назначения
+      setTaskAssignments([]);
+    }
+  }, [tasks]);
 
   const loadDemoTasks = () => {
     const demoTasks: Task[] = [
@@ -140,7 +149,7 @@ export const useTasks = () => {
     }
   };
 
-  const createTask = async (task: Omit<Task, 'id' | 'actualHours' | 'totalCost' | 'createdAt' | 'updatedAt'>) => {
+  const createTask = async (task: Omit<Task, 'id' | 'totalCost' | 'createdAt' | 'updatedAt'>) => {
     try {
       const newTask = await tasksAPI.create(task);
       await loadTasks();

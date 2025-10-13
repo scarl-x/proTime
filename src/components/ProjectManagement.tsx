@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Users, Calendar, Folder, Eye } from 'lucide-react';
-import { Project, User } from '../types';
+import { Plus, Edit2, Trash2, Users, Calendar, Folder, Eye, Clock } from 'lucide-react';
+import { Project, User, Task, TimeSlot } from '../types';
 
 interface ProjectManagementProps {
   projects: Project[];
@@ -11,6 +11,8 @@ interface ProjectManagementProps {
   onAddTeamMember: (projectId: string, employeeId: string) => void;
   onRemoveTeamMember: (projectId: string, employeeId: string) => void;
   onViewProjectTasks?: (project: Project) => void;
+  tasks?: Task[];
+  timeSlots?: TimeSlot[];
 }
 
 interface ProjectFormData {
@@ -20,6 +22,7 @@ interface ProjectFormData {
   status: 'active' | 'completed' | 'on-hold';
   teamLeadId?: string;
   teamMembers: string[];
+  contractHours?: number;
 }
 
 const PROJECT_COLORS = [
@@ -36,7 +39,10 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
   onAddTeamMember,
   onRemoveTeamMember,
   onViewProjectTasks,
+  tasks = [],
+  timeSlots = [],
 }) => {
+  // Тумблер перенесен на страницу проекта (список задач)
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -46,6 +52,7 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
     status: 'active',
     teamLeadId: undefined,
     teamMembers: [],
+    contractHours: undefined,
   });
 
   const employeeList = employees; // админы тоже сотрудники
@@ -54,9 +61,9 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
     e.preventDefault();
     
     if (editingProject) {
-      onUpdateProject(editingProject.id, formData);
+      onUpdateProject(editingProject.id, formData as any);
     } else {
-      onAddProject(formData);
+      onAddProject(formData as any);
     }
 
     resetForm();
@@ -83,6 +90,7 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
       status: project.status,
       teamLeadId: project.teamLeadId,
       teamMembers: project.teamMembers,
+      contractHours: (project as any).contractHours,
     });
     setShowModal(true);
   };
@@ -109,20 +117,22 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Управление проектами</h2>
           <p className="text-gray-600 mt-1">
             Создавайте и управляйте проектами команды
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Создать проект</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Создать проект</span>
+          </button>
+        </div>
       </div>
 
       {/* Projects Grid */}
@@ -197,6 +207,9 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
                   <span>{new Date(project.createdAt).toLocaleDateString('ru-RU')}</span>
                 </div>
               </div>
+
+        {/* Метрики по часам */}
+        {/* Метрики перенесены внутрь страницы проекта (TaskList) */}
 
               {project.teamMembers.length > 0 && (
                 <div className="mt-4 pt-4 border-t">
@@ -321,6 +334,22 @@ export const ProjectManagement: React.FC<ProjectManagementProps> = ({
                       <option value="completed">Завершен</option>
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Часы по договору</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={formData.contractHours ?? ''}
+                    onChange={(e) => setFormData({ ...formData, contractHours: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Напр. 120"
+                  />
                 </div>
 
                 <div>

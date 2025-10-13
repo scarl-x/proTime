@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { TaskCategory } from '../types';
 import { taskCategoriesAPI } from '../lib/api';
 
-export const useTaskCategories = () => {
+export const useTaskCategories = (currentUserId?: string) => {
   const [categories, setCategories] = useState<TaskCategory[]>([]);
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    if (currentUserId) {
+      loadCategories();
+    }
+  }, [currentUserId]);
 
   const loadDemoCategories = () => {
     const demoCategories: TaskCategory[] = [
@@ -73,7 +75,11 @@ export const useTaskCategories = () => {
   const loadCategories = async () => {
     try {
       const loadedCategories = await taskCategoriesAPI.getAll(true);
-      setCategories(loadedCategories);
+      // Фильтруем категории: показываем только те, которые созданы текущим пользователем
+      const filteredCategories = currentUserId 
+        ? loadedCategories.filter(cat => cat.createdBy === currentUserId)
+        : loadedCategories;
+      setCategories(filteredCategories);
     } catch (error) {
       console.error('Error loading task categories:', error);
       loadDemoCategories();

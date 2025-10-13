@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { UiPreferencesContext } from '../../utils/uiPreferencesContext';
 import { Plus, Edit2, Trash2, Tag, Clock, DollarSign } from 'lucide-react';
 import { TaskCategory } from '../../types';
 import { TaskCategoryModal } from './TaskCategoryModal';
@@ -9,6 +10,7 @@ interface TaskCategoryManagementProps {
   onUpdateCategory: (id: string, updates: Partial<TaskCategory>) => void;
   onDeleteCategory: (id: string) => void;
   currentUserId: string;
+  currentUserRole?: string;
 }
 
 export const TaskCategoryManagement: React.FC<TaskCategoryManagementProps> = ({
@@ -17,7 +19,9 @@ export const TaskCategoryManagement: React.FC<TaskCategoryManagementProps> = ({
   onUpdateCategory,
   onDeleteCategory,
   currentUserId,
+  currentUserRole,
 }) => {
+  const { hideExtended } = React.useContext(UiPreferencesContext);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<TaskCategory | null>(null);
 
@@ -52,9 +56,13 @@ export const TaskCategoryManagement: React.FC<TaskCategoryManagementProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Категории задач</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {currentUserRole === 'admin' ? 'Категории задач' : 'Мои категории задач'}
+          </h2>
           <p className="text-gray-600 mt-1">
-            Создавайте шаблоны для быстрого создания типовых задач
+            {currentUserRole === 'admin' 
+              ? 'Создавайте шаблоны для быстрого создания типовых задач'
+              : 'Ваши личные шаблоны для быстрого создания типовых задач'}
           </p>
         </div>
         <button
@@ -125,24 +133,28 @@ export const TaskCategoryManagement: React.FC<TaskCategoryManagementProps> = ({
                   <span className="font-medium text-gray-900">{category.defaultHours}ч</span>
                 </div>
                 
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <DollarSign className="h-4 w-4" />
-                    <span>Ставка:</span>
-                  </div>
-                  <span className="font-medium text-gray-900">
-                    {category.defaultHourlyRate.toLocaleString('ru-RU')} ₽/ч
-                  </span>
-                </div>
-                
-                <div className="pt-3 border-t border-gray-200">
+                {currentUserRole === 'admin' && !hideExtended && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Стоимость задачи:</span>
-                    <span className="font-bold text-gray-900">
-                      {(category.defaultHours * category.defaultHourlyRate).toLocaleString('ru-RU')} ₽
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <DollarSign className="h-4 w-4" />
+                      <span>Ставка:</span>
+                    </div>
+                    <span className="font-medium text-gray-900">
+                      {category.defaultHourlyRate.toLocaleString('ru-RU')} ₽/ч
                     </span>
                   </div>
-                </div>
+                )}
+                
+                {currentUserRole === 'admin' && !hideExtended && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Стоимость задачи:</span>
+                      <span className="font-bold text-gray-900">
+                        {(category.defaultHours * category.defaultHourlyRate).toLocaleString('ru-RU')} ₽
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

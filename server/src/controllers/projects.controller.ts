@@ -16,6 +16,7 @@ export const getAllProjects = async (req: Request, res: Response): Promise<void>
       teamLeadId: project.team_lead_id,
       teamMembers: project.team_members || [],
       createdAt: project.created_at,
+      contractHours: project.contract_hours,
     }));
 
     res.json(projects);
@@ -47,6 +48,7 @@ export const getProjectById = async (req: Request, res: Response): Promise<void>
       teamLeadId: project.team_lead_id,
       teamMembers: project.team_members || [],
       createdAt: project.created_at,
+      contractHours: project.contract_hours,
     });
   } catch (error) {
     console.error('Get project error:', error);
@@ -56,7 +58,7 @@ export const getProjectById = async (req: Request, res: Response): Promise<void>
 
 export const createProject = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, color, status, teamLeadId, teamMembers } = req.body;
+    const { name, description, color, status, teamLeadId, teamMembers, contractHours } = req.body;
 
     if (!name) {
       res.status(400).json({ error: 'Название проекта обязательно' });
@@ -64,10 +66,10 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
     }
 
     const result = await pool.query(
-      `INSERT INTO projects (name, description, color, status, team_lead_id, team_members, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      `INSERT INTO projects (name, description, color, status, team_lead_id, team_members, created_at, contract_hours)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
        RETURNING *`,
-      [name, description || '', color || '#3B82F6', status || 'active', teamLeadId, teamMembers || []]
+      [name, description || '', color || '#3B82F6', status || 'active', teamLeadId, teamMembers || [], contractHours]
     );
 
     const project = result.rows[0];
@@ -81,6 +83,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
       teamLeadId: project.team_lead_id,
       teamMembers: project.team_members || [],
       createdAt: project.created_at,
+      contractHours: project.contract_hours,
     });
   } catch (error) {
     console.error('Create project error:', error);
@@ -91,7 +94,7 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
 export const updateProject = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, description, color, status, teamLeadId, teamMembers } = req.body;
+    const { name, description, color, status, teamLeadId, teamMembers, contractHours } = req.body;
 
     const result = await pool.query(
       `UPDATE projects 
@@ -100,10 +103,11 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
            color = COALESCE($3, color),
            status = COALESCE($4, status),
            team_lead_id = COALESCE($5, team_lead_id),
-           team_members = COALESCE($6, team_members)
-       WHERE id = $7
+           team_members = COALESCE($6, team_members),
+           contract_hours = COALESCE($7, contract_hours)
+       WHERE id = $8
        RETURNING *`,
-      [name, description, color, status, teamLeadId, teamMembers, id]
+      [name, description, color, status, teamLeadId, teamMembers, contractHours, id]
     );
 
     if (result.rows.length === 0) {
@@ -122,6 +126,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
       teamLeadId: project.team_lead_id,
       teamMembers: project.team_members || [],
       createdAt: project.created_at,
+      contractHours: project.contract_hours,
     });
   } catch (error) {
     console.error('Update project error:', error);

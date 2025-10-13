@@ -4,6 +4,7 @@ import { Task, TaskAssignment, User, TimeSlot, Project } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 import { TaskDistributionModal } from './TaskDistributionModal';
 import { MarkdownRenderer } from '../MarkdownRenderer';
+import { UiPreferencesContext } from '../../utils/uiPreferencesContext';
 
 interface TaskDetailViewProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
   const [selectedAssignment, setSelectedAssignment] = useState<TaskAssignment | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [allocatedHours, setAllocatedHours] = useState(0);
+  const { hideExtended } = React.useContext(UiPreferencesContext);
 
   if (!isOpen) return null;
 
@@ -142,18 +144,20 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
               <p className="text-2xl font-bold text-green-900">{task.actualHours}ч</p>
             </div>
 
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <DollarSign className="h-5 w-5 text-purple-600" />
-                <span className="text-sm font-medium text-purple-900">Стоимость</span>
+            {isAdmin && !hideExtended && (
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <DollarSign className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-900">Стоимость</span>
+                </div>
+                <p className="text-2xl font-bold text-purple-900">
+                  {task.totalCost.toLocaleString('ru-RU')} ₽
+                </p>
+                <p className="text-xs text-purple-700 mt-1">
+                  {task.hourlyRate.toLocaleString('ru-RU')} ₽/ч
+                </p>
               </div>
-              <p className="text-2xl font-bold text-purple-900">
-                {task.totalCost.toLocaleString('ru-RU')} ₽
-              </p>
-              <p className="text-xs text-purple-700 mt-1">
-                {task.hourlyRate.toLocaleString('ru-RU')} ₽/ч
-              </p>
-            </div>
+            )}
 
             <div className={`rounded-lg p-4 ${taskOverrun > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
               <div className="flex items-center space-x-2 mb-2">
@@ -167,6 +171,30 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Finance section (admin only) */}
+          {isAdmin && !hideExtended && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Финансы</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-lg border p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <DollarSign className="h-5 w-5 text-purple-600" />
+                    <span className="text-sm font-medium text-gray-700">Ставка за час</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{task.hourlyRate.toLocaleString('ru-RU')} ₽/ч</p>
+                </div>
+                <div className="bg-white rounded-lg border p-4">
+                  <span className="text-sm font-medium text-gray-700">Плановая стоимость</span>
+                  <p className="text-xl font-bold text-gray-900">{(task.plannedHours * task.hourlyRate).toLocaleString('ru-RU')} ₽</p>
+                </div>
+                <div className="bg-white rounded-lg border p-4">
+                  <span className="text-sm font-medium text-gray-700">Текущая стоимость</span>
+                  <p className="text-xl font-bold text-gray-900">{task.totalCost.toLocaleString('ru-RU')} ₽</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           {task.description && (

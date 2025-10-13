@@ -237,7 +237,37 @@ export const deleteTimeSlot = async (req: Request, res: Response): Promise<void>
   try {
     const { id } = req.params;
 
-    const result = await pool.query('DELETE FROM time_slots WHERE id = $1 RETURNING id', [id]);
+    await pool.query('BEGIN');
+
+    // Получаем слот, чтобы определить task_id и employee_id
+    const slotRes = await pool.query('SELECT id, task_id, employee_id FROM time_slots WHERE id = $1', [id]);
+    if (slotRes.rows.length === 0) {
+      await pool.query('ROLLBACK');
+      res.status(404).json({ error: 'Временной слот не найден' });
+      return;
+    }
+
+    const { task_id: taskId, employee_id: employeeId } = slotRes.rows[0];
+
+    // Удаляем сам слот
+    const result = await pool.query('DELETE FROM time_slots WHERE id = $1 RETURNING id, task_id', [id]);
+
+    // Если слот был привязан к задаче, проверяем, остались ли ещё слоты по этому назначению
+    if (taskId && employeeId) {
+      const remainRes = await pool.query(
+        'SELECT 1 FROM time_slots WHERE task_id = $1 AND employee_id = $2 LIMIT 1',
+        [taskId, employeeId]
+      );
+      // Если слотов больше нет — удаляем назначение
+      if (remainRes.rows.length === 0) {
+        await pool.query(
+          'DELETE FROM task_assignments WHERE task_id = $1 AND employee_id = $2',
+          [taskId, employeeId]
+        );
+      }
+    }
+
+    await pool.query('COMMIT');
 
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Временной слот не найден' });
@@ -247,6 +277,7 @@ export const deleteTimeSlot = async (req: Request, res: Response): Promise<void>
     res.json({ message: 'Временной слот удален', id });
   } catch (error) {
     console.error('Delete time slot error:', error);
+    try { await pool.query('ROLLBACK'); } catch {}
     res.status(500).json({ error: 'Ошибка удаления временного слота' });
   }
 };

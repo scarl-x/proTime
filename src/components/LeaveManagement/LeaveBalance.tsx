@@ -58,39 +58,41 @@ export const LeaveBalance: React.FC<LeaveBalanceProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="flex border-b">
-          <button
-            onClick={() => setActiveTab('balance')}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition duration-200 ${
-              activeTab === 'balance'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <Calendar className="h-4 w-4" />
-              <span>Баланс отпусков</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('calculator')}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition duration-200 ${
-              activeTab === 'calculator'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <Calculator className="h-4 w-4" />
-              <span>Калькулятор баланса</span>
-            </div>
-          </button>
+      {/* Tab Navigation - только для админов */}
+      {currentUser.role === 'admin' && (
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab('balance')}
+              className={`flex-1 px-6 py-4 text-sm font-medium transition duration-200 ${
+                activeTab === 'balance'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <Calendar className="h-4 w-4" />
+                <span>Баланс отпусков</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('calculator')}
+              className={`flex-1 px-6 py-4 text-sm font-medium transition duration-200 ${
+                activeTab === 'calculator'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <Calculator className="h-4 w-4" />
+                <span>Калькулятор баланса</span>
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {activeTab === 'calculator' ? (
+      {activeTab === 'calculator' && currentUser.role === 'admin' ? (
         <VacationCalculator
           employees={employees}
           leaveRequests={leaveRequests}
@@ -101,10 +103,12 @@ export const LeaveBalance: React.FC<LeaveBalanceProps> = ({
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b">
           <h3 className="text-lg font-semibold text-gray-900">
-            Баланс отпусков (по ТК РФ)
+            Баланс отпусков
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Накопленный баланс отпусков согласно Трудовому кодексу РФ
+            {currentUser.role === 'admin' 
+              ? 'Накопленный баланс отпусков сотрудников' 
+              : 'Ваш накопленный баланс отпусков'}
           </p>
         </div>
 
@@ -135,12 +139,12 @@ export const LeaveBalance: React.FC<LeaveBalanceProps> = ({
               </div>
 
               <div className="space-y-4">
-                  {/* Накопленный отпускной баланс по ТК РФ */}
+                  {/* Накопленный отпускной баланс */}
                   {vacationBalance ? (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-center space-x-2 mb-2">
                         <Calculator className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-900">Накопленный баланс (ТК РФ)</span>
+                        <span className="text-sm font-medium text-blue-900">Накопленный баланс</span>
                       </div>
                       <div className="text-2xl font-bold text-blue-900 mb-2">
                         {vacationBalance.currentBalance} дней

@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS projects (
   status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'on-hold')) DEFAULT 'active',
   team_lead_id UUID REFERENCES users(id) ON DELETE SET NULL,
   team_members UUID[] DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  contract_hours NUMERIC(10,2)
 );
 
 CREATE INDEX idx_projects_status ON projects(status);
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   planned_hours NUMERIC(10,2) DEFAULT 0,
   actual_hours NUMERIC(10,2) DEFAULT 0,
   hourly_rate NUMERIC(10,2) DEFAULT 0,
+  contract_hours NUMERIC(10,2),
   total_cost NUMERIC(10,2) DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('new', 'planned', 'in-progress', 'code-review', 'testing-internal', 'testing-client', 'closed')) DEFAULT 'new',
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -147,6 +149,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
   approved_at TIMESTAMPTZ,
   notes TEXT,
+  worked BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -9,6 +9,7 @@ const mapTask = (row: any) => ({
   plannedHours: parseFloat(row.planned_hours),
   actualHours: parseFloat(row.actual_hours),
   hourlyRate: parseFloat(row.hourly_rate),
+  contractHours: row.contract_hours != null ? parseFloat(row.contract_hours) : undefined,
   totalCost: parseFloat(row.total_cost),
   status: row.status,
   createdBy: row.created_by,
@@ -83,7 +84,7 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
   try {
     const {
       projectId, name, description, plannedHours, actualHours,
-      hourlyRate, status, createdBy
+      hourlyRate, status, createdBy, contractHours
     } = req.body;
 
     if (!projectId || !name || !createdBy) {
@@ -95,12 +96,12 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
     const result = await pool.query(
       `INSERT INTO tasks (
         project_id, name, description, planned_hours, actual_hours,
-        hourly_rate, status, created_by, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        hourly_rate, contract_hours, status, created_by, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
       RETURNING *`,
       [
         projectId, name, description || '', plannedHours || 0, actualHours || 0,
-        hourlyRate || 0, status || 'new', createdBy
+        hourlyRate || 0, contractHours, status || 'new', createdBy
       ]
     );
 
@@ -115,7 +116,7 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const {
-      name, description, plannedHours, actualHours, hourlyRate, status
+      name, description, plannedHours, actualHours, hourlyRate, status, contractHours
     } = req.body;
 
     // total_cost это generated column, он обновится автоматически
@@ -126,11 +127,12 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
            planned_hours = COALESCE($3, planned_hours),
            actual_hours = COALESCE($4, actual_hours),
            hourly_rate = COALESCE($5, hourly_rate),
-           status = COALESCE($6, status),
+           contract_hours = COALESCE($6, contract_hours),
+           status = COALESCE($7, status),
            updated_at = NOW()
-       WHERE id = $7
+       WHERE id = $8
        RETURNING *`,
-      [name, description, plannedHours, actualHours, hourlyRate, status, id]
+      [name, description, plannedHours, actualHours, hourlyRate, contractHours, status, id]
     );
 
     res.json(mapTask(result.rows[0]));
@@ -144,7 +146,19 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
 
+    // Каскадная чистка: сначала удаляем слоты и назначения, затем задачу (в рамках транзакции)
+    await pool.query('BEGIN');
+
+    // Удаляем все временные слоты, связанные с задачей
+    await pool.query('DELETE FROM time_slots WHERE task_id = $1', [id]);
+
+    // Удаляем все назначения по задаче
+    await pool.query('DELETE FROM task_assignments WHERE task_id = $1', [id]);
+
+    // Удаляем задачу
     const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
+
+    await pool.query('COMMIT');
 
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Задача не найдена' });
@@ -154,6 +168,7 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
     res.json({ message: 'Задача удалена', id });
   } catch (error) {
     console.error('Delete task error:', error);
+    try { await pool.query('ROLLBACK'); } catch {}
     res.status(500).json({ error: 'Ошибка удаления задачи' });
   }
 };
@@ -244,10 +259,33 @@ export const deleteTaskAssignment = async (req: Request, res: Response): Promise
   try {
     const { assignmentId } = req.params;
 
+    await pool.query('BEGIN');
+
+    // Получаем данные назначения, чтобы знать task_id и employee_id
+    const assignmentRes = await pool.query(
+      'SELECT id, task_id, employee_id FROM task_assignments WHERE id = $1',
+      [assignmentId]
+    );
+    if (assignmentRes.rows.length === 0) {
+      await pool.query('ROLLBACK');
+      res.status(404).json({ error: 'Назначение задачи не найдено' });
+      return;
+    }
+    const { task_id: taskId, employee_id: employeeId } = assignmentRes.rows[0];
+
+    // Удаляем слоты календаря для этого сотрудника по этой задаче
+    await pool.query(
+      'DELETE FROM time_slots WHERE task_id = $1 AND employee_id = $2',
+      [taskId, employeeId]
+    );
+
+    // Удаляем само назначение
     const result = await pool.query(
       'DELETE FROM task_assignments WHERE id = $1 RETURNING id',
       [assignmentId]
     );
+
+    await pool.query('COMMIT');
 
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Назначение задачи не найдено' });
@@ -257,6 +295,7 @@ export const deleteTaskAssignment = async (req: Request, res: Response): Promise
     res.json({ message: 'Назначение задачи удалено', id: assignmentId });
   } catch (error) {
     console.error('Delete task assignment error:', error);
+    try { await pool.query('ROLLBACK'); } catch {}
     res.status(500).json({ error: 'Ошибка удаления назначения задачи' });
   }
 };

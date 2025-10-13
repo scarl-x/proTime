@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LeaveRequest, User as UserType } from '../../types';
 import { getMonthName } from '../../utils/dateUtils';
 
@@ -6,15 +7,36 @@ interface LeaveCalendarProps {
   currentDate: Date;
   leaveRequests: LeaveRequest[];
   employees: UserType[];
+  currentUser: UserType;
   onDateClick?: (date: string) => void;
 }
 
 export const LeaveCalendar: React.FC<LeaveCalendarProps> = ({
-  currentDate,
+  currentDate: initialDate,
   leaveRequests,
   employees,
+  currentUser,
   onDateClick,
 }) => {
+  const [currentDate, setCurrentDate] = useState(initialDate);
+
+  // Фильтруем отпуска: сотрудники видят только свои, админы - все
+  const filteredLeaveRequests = currentUser.role === 'employee'
+    ? leaveRequests.filter(request => request.employeeId === currentUser.id)
+    : leaveRequests;
+
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
   const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
   const startDate = new Date(monthStart);
@@ -36,7 +58,7 @@ export const LeaveCalendar: React.FC<LeaveCalendarProps> = ({
   const day = String(date.getDate()).padStart(2, '0');
   const dateStr = `${year}-${month}-${day}`;
   
-  return leaveRequests.filter(request => 
+  return filteredLeaveRequests.filter(request => 
     request.status === 'approved' &&
     request.startDate <= dateStr && 
     dateStr <= request.endDate
@@ -62,12 +84,49 @@ export const LeaveCalendar: React.FC<LeaveCalendarProps> = ({
     }
   };
 
+  const getLeaveTypeLabel = (type: LeaveRequest['type']) => {
+    switch (type) {
+      case 'vacation':
+        return 'Отпуск';
+      case 'sick_leave':
+        return 'Больничный';
+      case 'personal_leave':
+        return 'Личный';
+      case 'compensatory_leave':
+        return 'Отгул';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-      <div className="p-4 bg-gray-50 border-b">
+      <div className="p-4 bg-gray-50 border-b flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">
-          Календарь отпусков - {getMonthName(currentDate)}
+          {currentUser.role === 'admin' ? 'Календарь отпусков' : 'Мои отпуска'} - {getMonthName(currentDate)} {currentDate.getFullYear()}
         </h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevMonth}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Предыдущий месяц"
+          >
+            <ChevronLeft className="h-5 w-5 text-gray-600" />
+          </button>
+          <button
+            onClick={handleToday}
+            className="px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            Сегодня
+          </button>
+          <button
+            onClick={handleNextMonth}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Следующий месяц"
+          >
+            <ChevronRight className="h-5 w-5 text-gray-600" />
+          </button>
+        </div>
       </div>
 
       {/* Week headers */}
@@ -112,7 +171,10 @@ export const LeaveCalendar: React.FC<LeaveCalendarProps> = ({
                       className={`text-xs p-1 rounded truncate ${getLeaveTypeColor(request.type)}`}
                       title={`${getEmployeeName(request.employeeId)} - ${request.reason}`}
                     >
-                      {getEmployeeName(request.employeeId).split(' ')[0]}
+                      {currentUser.role === 'admin' 
+                        ? getEmployeeName(request.employeeId).split(' ')[0]
+                        : getLeaveTypeLabel(request.type)
+                      }
                     </div>
                   ))}
                   {requests.length > 2 && (
