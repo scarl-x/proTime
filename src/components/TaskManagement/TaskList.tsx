@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Eye, Edit2, Trash2, Users, Clock, DollarSign, AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { UiPreferencesContext } from '../../utils/uiPreferencesContext';
-import { Task, Project, User } from '../../types';
+import { Task, Project, User, TaskAssignment } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 
 interface TaskListProps {
@@ -15,6 +15,7 @@ interface TaskListProps {
   onDeleteTask: (taskId: string) => void;
   calculateTaskOverrun: (task: Task) => number;
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
+  taskAssignments?: TaskAssignment[];
 }
 
 const STATUS_LABELS = {
@@ -48,6 +49,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onDeleteTask,
   calculateTaskOverrun,
   onUpdateTask,
+  taskAssignments = [],
 }) => {
   const { hideExtended, setHideExtended } = React.useContext(UiPreferencesContext);
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'plannedHours' | 'actualHours' | 'createdAt'>('createdAt');
@@ -436,12 +438,28 @@ export const TaskList: React.FC<TaskListProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        <div>План: {task.plannedHours}ч</div>
-                        <div className={task.actualHours > task.plannedHours ? 'text-red-600' : 'text-green-600'}>
-                          Факт: {task.actualHours}ч
+                      {isAdmin ? (
+                        <div className="text-sm text-gray-900">
+                          <div>План: {task.plannedHours}ч</div>
+                          <div className={task.actualHours > task.plannedHours ? 'text-red-600' : 'text-green-600'}>
+                            Факт: {task.actualHours}ч
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        (() => {
+                          const myAssigns = taskAssignments.filter(a => a.taskId === task.id && a.employeeId === currentUser.id);
+                          const myPlanned = myAssigns.reduce((s, a) => s + (a.allocatedHours || 0), 0);
+                          const myActual = myAssigns.reduce((s, a) => s + (a.actualHours || 0), 0);
+                          return (
+                            <div className="text-sm text-gray-900">
+                              <div>Мой план: {myPlanned}ч</div>
+                              <div className={myActual > myPlanned ? 'text-red-600' : 'text-green-600'}>
+                                Мой факт: {myActual}ч
+                              </div>
+                            </div>
+                          );
+                        })()
+                      )}
                     </td>
                     {isAdmin && !hideExtended && (
                       <td className="px-6 py-4">

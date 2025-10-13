@@ -329,9 +329,14 @@ export const Layout: React.FC<LayoutProps> = ({
                     window.dispatchEvent(new CustomEvent('taskClick', { detail: task }));
                   }}
                 />
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200 hidden sm:block">
-                  <Settings className="h-5 w-5" />
-                </button>
+                <div className="relative hidden sm:block">
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('openAccountMenu'))}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200"
+                  >
+                    <Settings className="h-5 w-5" />
+                  </button>
+                </div>
                 <button
                   onClick={onLogout}
                   className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition duration-200"

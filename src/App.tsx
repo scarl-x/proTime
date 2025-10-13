@@ -41,6 +41,7 @@ import { OverdueTasksList } from './components/EmployeeSchedule/OverdueTasksList
 import { EmployeeBirthdayCards } from './components/EmployeeBirthdayCards';
 import { BacklogView } from './components/BacklogView';
 import { getWeekStart, getMonthName, formatDate } from './utils/dateUtils';
+import { AccountModal } from './components/AccountModal';
 
 function App() {
   const { 
@@ -141,6 +142,7 @@ function App() {
   const [viewingEmployeeSchedule, setViewingEmployeeSchedule] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [showAccount, setShowAccount] = useState(false);
 
   const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
     setNotification({ type, message });
@@ -167,8 +169,15 @@ function App() {
     return () => {
       window.removeEventListener('slotClick', handleSlotClickEvent as EventListener);
       window.removeEventListener('taskClick', handleTaskClickEvent as EventListener);
+      window.removeEventListener('openAccountMenu', () => setShowAccount(true));
     };
   }, [projects]);
+
+  React.useEffect(() => {
+    const openAccount = () => setShowAccount(true);
+    window.addEventListener('openAccountMenu', openAccount as EventListener);
+    return () => window.removeEventListener('openAccountMenu', openAccount as EventListener);
+  }, []);
 
   // Экран настроек дейликов находится в отдельном компоненте
 
@@ -263,7 +272,8 @@ function App() {
             name: (slotData as any).task,
             description: ((slotData as any).calendarDescription ? `${(slotData as any).calendarDescription}\n` : '') + `Создано из календаря` ,
             plannedHours: slotData.plannedHours,
-            hourlyRate: 3500, // Стандартная ставка
+            actualHours: 0,
+            hourlyRate: 0, // Стандартная ставка
             status: taskStatus,
             createdBy: user.id,
           });
@@ -305,13 +315,18 @@ function App() {
 
   const createTaskForBooking = async (bookingData: any) => {
     try {
+      const bookingStatus: string | undefined = bookingData.status;
+      const taskStatus = bookingStatus === 'in-progress' ? 'in-progress'
+        : bookingStatus === 'completed' ? 'closed'
+        : 'planned';
       const task = await createTask({
         projectId: bookingData.projectId,
         name: `[БРОНИРОВАНИЕ] ${bookingData.taskDescription}`,
         description: `Бронирование времени: ${bookingData.taskDescription}\nЗапросил: ${allUsers.find(u => u.id === bookingData.requesterId)?.name || 'Неизвестный'}\nСотрудник: ${allUsers.find(u => u.id === bookingData.employeeId)?.name || 'Неизвестный'}`,
         plannedHours: bookingData.durationHours,
+        actualHours: 0,
         hourlyRate: 3500, // Стандартная ставка
-        status: 'new',
+        status: taskStatus,
         createdBy: bookingData.requesterId,
       });
       
@@ -673,6 +688,7 @@ function App() {
               onDeleteTask={deleteTask}
               calculateTaskOverrun={calculateTaskOverrun}
               onUpdateTask={updateTask}
+              taskAssignments={taskAssignments}
             />
           </div>
         );
@@ -980,6 +996,20 @@ function App() {
         currentUserId={user.id}
         categories={getActiveCategories()}
         currentUserRole={user.role}
+      />
+
+      <AccountModal
+        isOpen={showAccount}
+        onClose={() => setShowAccount(false)}
+        user={user}
+        onSave={async (updates) => {
+          try {
+            await updateEmployee(user.id, updates as any);
+            showNotification('success', 'Профиль обновлён');
+          } catch (e) {
+            showNotification('error', 'Не удалось сохранить профиль');
+          }
+        }}
       />
 
       {selectedTaskForDetail && (
