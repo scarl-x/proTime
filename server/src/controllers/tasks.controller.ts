@@ -22,6 +22,8 @@ const mapTaskAssignment = (row: any) => ({
   id: row.id,
   taskId: row.task_id,
   employeeId: row.employee_id,
+  title: row.title || '',
+  description: row.description || '',
   allocatedHours: parseFloat(row.allocated_hours),
   actualHours: parseFloat(row.actual_hours),
   deadline: row.deadline,
@@ -75,19 +77,7 @@ export const getTaskById = async (req: Request, res: Response): Promise<void> =>
     }
 
     const updatedTask = mapTask(result.rows[0]);
-
-    // Двусторонняя синхронизация: если статус задачи обновлен, обновим статусы связанных слотов
-    if (status) {
-      let slotStatus: 'planned' | 'in-progress' | 'completed' | null = null;
-      if (status === 'in-progress') slotStatus = 'in-progress';
-      else if (status === 'closed') slotStatus = 'completed';
-      else if (status === 'planned' || status === 'new') slotStatus = 'planned';
-
-      if (slotStatus) {
-        await pool.query(`UPDATE time_slots SET status = $1 WHERE task_id = $2`, [slotStatus, id]);
-      }
-    }
-
+    // GET не должен иметь побочных эффектов, поэтому синхронизацию не выполняем здесь
     res.json(updatedTask);
   } catch (error) {
     console.error('Get task error:', error);
@@ -211,7 +201,8 @@ export const createTaskAssignment = async (req: Request, res: Response): Promise
     const { id: taskId } = req.params;
     const {
       employeeId, allocatedHours, actualHours, deadline,
-      deadlineType, deadlineReason, priority
+      deadlineType, deadlineReason, priority,
+      title, description
     } = req.body;
 
     if (!employeeId || !allocatedHours) {
@@ -221,12 +212,12 @@ export const createTaskAssignment = async (req: Request, res: Response): Promise
 
     const result = await pool.query(
       `INSERT INTO task_assignments (
-        task_id, employee_id, allocated_hours, actual_hours,
+        task_id, employee_id, title, description, allocated_hours, actual_hours,
         deadline, deadline_type, deadline_reason, priority, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
       RETURNING *`,
       [
-        taskId, employeeId, allocatedHours, actualHours || 0,
+        taskId, employeeId, title || '', description || '', allocatedHours, actualHours || 0,
         deadline, deadlineType, deadlineReason, priority || 'medium'
       ]
     );
@@ -242,21 +233,23 @@ export const updateTaskAssignment = async (req: Request, res: Response): Promise
   try {
     const { assignmentId } = req.params;
     const {
-      allocatedHours, actualHours, deadline, deadlineType,
+      title, description, allocatedHours, actualHours, deadline, deadlineType,
       deadlineReason, priority
     } = req.body;
 
     const result = await pool.query(
       `UPDATE task_assignments 
-       SET allocated_hours = COALESCE($1, allocated_hours),
-           actual_hours = COALESCE($2, actual_hours),
-           deadline = COALESCE($3, deadline),
-           deadline_type = COALESCE($4, deadline_type),
-           deadline_reason = COALESCE($5, deadline_reason),
-           priority = COALESCE($6, priority)
-       WHERE id = $7
+       SET title = COALESCE($1, title),
+           description = COALESCE($2, description),
+           allocated_hours = COALESCE($3, allocated_hours),
+           actual_hours = COALESCE($4, actual_hours),
+           deadline = COALESCE($5, deadline),
+           deadline_type = COALESCE($6, deadline_type),
+           deadline_reason = COALESCE($7, deadline_reason),
+           priority = COALESCE($8, priority)
+       WHERE id = $9
        RETURNING *`,
-      [allocatedHours, actualHours, deadline, deadlineType, deadlineReason, priority, assignmentId]
+      [title, description, allocatedHours, actualHours, deadline, deadlineType, deadlineReason, priority, assignmentId]
     );
 
     if (result.rows.length === 0) {
@@ -282,11 +275,12 @@ export const deleteTaskAssignment = async (req: Request, res: Response): Promise
       'SELECT id, task_id, employee_id FROM task_assignments WHERE id = $1',
       [assignmentId]
     );
-    if (assignmentRes.rows.length === 0) {
-      await pool.query('ROLLBACK');
-      res.status(404).json({ error: 'Назначение задачи не найдено' });
-      return;
-    }
+  if (assignmentRes.rows.length === 0) {
+    // Идемпотентность: если назначения нет, считаем удалённым
+    await pool.query('ROLLBACK');
+    res.json({ message: 'Назначение задачи уже отсутствует', id: assignmentId });
+    return;
+  }
     const { task_id: taskId, employee_id: employeeId } = assignmentRes.rows[0];
 
     // Удаляем слоты календаря для этого сотрудника по этой задаче
@@ -303,10 +297,11 @@ export const deleteTaskAssignment = async (req: Request, res: Response): Promise
 
     await pool.query('COMMIT');
 
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: 'Назначение задачи не найдено' });
-      return;
-    }
+  if (result.rows.length === 0) {
+    // Идемпотентность: если к моменту удаления запись исчезла
+    res.json({ message: 'Назначение задачи уже отсутствует', id: assignmentId });
+    return;
+  }
 
     res.json({ message: 'Назначение задачи удалено', id: assignmentId });
   } catch (error) {

@@ -12,13 +12,21 @@ interface AccountModalProps {
 export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, user, onSave }) => {
   const [form, setForm] = useState<Partial<User>>({});
 
+  // Нормализуем дату к формату YYYY-MM-DD, чтобы корректно отображать в input type="date"
+  const normalizeDateForInput = (value?: string): string | undefined => {
+    if (!value) return undefined;
+    // Берем строго первые 10 символов YYYY-MM-DD без каких-либо преобразований времени/таймзоны
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : value;
+  };
+
   useEffect(() => {
     if (user) {
       setForm({
         name: user.name,
         email: user.email,
-        birthday: user.birthday,
-        employmentDate: user.employmentDate,
+        birthday: normalizeDateForInput(user.birthday),
+        employmentDate: normalizeDateForInput(user.employmentDate),
       });
     }
   }, [user]);

@@ -189,7 +189,9 @@ export const useTasks = () => {
     deadline?: string,
     deadlineType: 'soft' | 'hard' = 'soft',
     deadlineReason?: string,
-    priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'
+    priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium',
+    title?: string,
+    description?: string,
   ) => {
     try {
       const newAssignment = await tasksAPI.createAssignment(taskId, {
@@ -200,6 +202,8 @@ export const useTasks = () => {
         deadlineType,
         deadlineReason,
         priority,
+        title,
+        description,
       });
       await loadTaskAssignments(taskId);
       return newAssignment;

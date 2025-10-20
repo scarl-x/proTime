@@ -30,6 +30,7 @@ import { DayView } from './components/Calendar/DayView';
 import { WeekView } from './components/Calendar/WeekView';
 import { MonthView } from './components/Calendar/MonthView';
 import { TimeSlotModal } from './components/TimeSlotModal';
+import { AssignmentSlotsModal } from './components/AssignmentSlotsModal';
 import { WeeklyReport } from './components/Reports/WeeklyReport';
 import { OverdueDeadlinesReport } from './components/Reports/OverdueDeadlinesReport';
 import { DailyStandupSettings } from './components/Settings/DailyStandupSettings';
@@ -127,6 +128,8 @@ function App() {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [showTimeSlotModal, setShowTimeSlotModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
+  const [showAssignmentSlotsModal, setShowAssignmentSlotsModal] = useState(false);
+  const [selectedAssignmentForSlots, setSelectedAssignmentForSlots] = useState<any>(null);
   // Режимы отображения для админа: мои все проекты, мои по проекту, команда по проектам
   const [adminCalendarMode, setAdminCalendarMode] = useState<'my-all' | 'my-project' | 'team-projects'>('my-all');
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -248,6 +251,17 @@ function App() {
   };
 
   const handleSlotClick = (slot: TimeSlot) => {
+    // Если слот принадлежит назначению — открываем модал распределения назначения
+    const assignmentId = (slot as any).assignmentId as string | undefined;
+    if (assignmentId) {
+      const assignment = taskAssignments.find(a => a.id === assignmentId);
+      if (assignment) {
+        setSelectedAssignmentForSlots(assignment);
+        setShowAssignmentSlotsModal(true);
+        return;
+      }
+    }
+    // Иначе обычное окно редактирования слота
     setEditingSlot(slot);
     setShowTimeSlotModal(true);
   };
@@ -325,7 +339,7 @@ function App() {
         description: `Бронирование времени: ${bookingData.taskDescription}\nЗапросил: ${allUsers.find(u => u.id === bookingData.requesterId)?.name || 'Неизвестный'}\nСотрудник: ${allUsers.find(u => u.id === bookingData.employeeId)?.name || 'Неизвестный'}`,
         plannedHours: bookingData.durationHours,
         actualHours: 0,
-        hourlyRate: 3500, // Стандартная ставка
+        hourlyRate: 0, // Стандартная ставка
         status: taskStatus,
         createdBy: bookingData.requesterId,
       });
@@ -923,6 +937,25 @@ function App() {
     >
       {renderContent()}
 
+      {/* Модал редактирования распределения слотов назначения (вместо TimeSlotModal для слотов с assignmentId) */}
+      {showAssignmentSlotsModal && selectedAssignmentForSlots && (
+        <AssignmentSlotsModal
+          isOpen={showAssignmentSlotsModal}
+          onClose={() => {
+            setShowAssignmentSlotsModal(false);
+            setSelectedAssignmentForSlots(null);
+          }}
+          assignment={selectedAssignmentForSlots}
+          employee={allUsers.find(u => u.id === selectedAssignmentForSlots.employeeId)!}
+          timeSlots={getAllTimeSlots(bookings).filter(ts => (ts as any).assignmentId === selectedAssignmentForSlots.id)}
+          projects={projects}
+          categories={categories}
+          onUpdateTimeSlot={updateTimeSlot}
+          onDeleteTimeSlot={async (id) => { await deleteTimeSlot(id); }}
+          onUpdateAssignment={updateTaskAssignment}
+        />
+      )}
+
       <TimeSlotModal
         isOpen={showTimeSlotModal}
         onClose={() => {
@@ -1020,6 +1053,8 @@ function App() {
           project={selectedProjectForTasks}
           timeSlots={getAllTimeSlots(bookings)}
           onCreateTimeSlot={addTimeSlot}
+            onUpdateTimeSlot={updateTimeSlot}
+            onDeleteTimeSlot={async (id) => { await deleteTimeSlot(id); }}
           assignments={getTaskAssignments(selectedTaskForDetail.id)}
           employees={allUsers}
           currentUser={user}

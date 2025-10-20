@@ -32,6 +32,7 @@ export interface TimeSlot {
   employeeId: string;
   projectId: string; // Привязка к проекту
   taskId?: string; // ID задачи из системы задач
+  assignmentId?: string; // ID назначения (части задачи)
   date: string; // Legacy: дата в UTC (для обратной совместимости)
   startTime: string; // Legacy: время в UTC (для обратной совместимости)
   endTime: string; // Legacy: время в UTC (для обратной совместимости)
@@ -198,6 +199,8 @@ export interface TaskAssignment {
   id: string;
   taskId: string;
   employeeId: string;
+  title?: string;
+  description?: string;
   allocatedHours: number;
   actualHours: number;
   createdAt: string;

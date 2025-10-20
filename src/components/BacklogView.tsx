@@ -59,43 +59,17 @@ export const BacklogView: React.FC<BacklogViewProps> = ({
   const [sortBy, setSortBy] = useState<'dueDate' | 'createdAt'>('createdAt');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Получаем задачи, назначенные на текущего пользователя, но не распределенные в календарь
+  // Нераспределенные: назначения без слотов
   const getUnassignedTasks = () => {
-    // Получаем ID задач, назначенных на текущего пользователя
-    const assignedTaskIds = taskAssignments
-      .filter(assignment => assignment.employeeId === currentUser.id)
-      .map(assignment => assignment.taskId);
-
-    // Получаем ID задач, которые уже распределены в календарь (через taskId)
-    const scheduledTaskIds = timeSlots
-      .filter(slot => slot.employeeId === currentUser.id)
-      .map(slot => slot.taskId)
-      .filter(Boolean);
-
-    // Получаем названия задач, которые уже распределены в календарь (через название задачи)
-    const scheduledTaskNames = timeSlots
-      .filter(slot => slot.employeeId === currentUser.id)
-      .map(slot => slot.task);
-
-    // Возвращаем задачи, которые назначены на пользователя, но не распределены в календарь
-    return tasks.filter(task => {
-      const isAssigned = assignedTaskIds.includes(task.id);
-      const isScheduledById = scheduledTaskIds.includes(task.id);
-      
-      // Проверяем, есть ли задача в календаре по названию
-      // Учитываем, что задачи из проектов создаются с суффиксом " (из задачи проекта)"
-      const isScheduledByName = scheduledTaskNames.some(name => {
-        // Точное совпадение названия
-        if (name === task.name) return true;
-        // Совпадение с суффиксом из проекта
-        if (name === `${task.name} (из задачи проекта)`) return true;
-        // Частичное совпадение (на случай других форматов)
-        if (name.includes(task.name) || task.name.includes(name)) return true;
-        return false;
-      });
-      
-      return isAssigned && !isScheduledById && !isScheduledByName;
-    });
+    const myAssignments = taskAssignments.filter(a => a.employeeId === currentUser.id);
+    const assignmentsWithSlots = new Set(
+      timeSlots
+        .filter(s => s.employeeId === currentUser.id && s.assignmentId)
+        .map(s => s.assignmentId as string)
+    );
+    const myUnscheduledAssignments = myAssignments.filter(a => !assignmentsWithSlots.has(a.id));
+    const myUnscheduledTaskIds = new Set(myUnscheduledAssignments.map(a => a.taskId));
+    return tasks.filter(t => myUnscheduledTaskIds.has(t.id));
   };
 
   const unassignedTasks = getUnassignedTasks();

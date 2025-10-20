@@ -6,6 +6,7 @@ const mapTimeSlot = (row: any) => ({
   employeeId: row.employee_id,
   projectId: row.project_id,
   taskId: row.task_id,
+  assignmentId: row.assignment_id,
   date: row.date,
   startTime: row.start_time,
   endTime: row.end_time,
@@ -104,6 +105,7 @@ export const createTimeSlot = async (req: Request, res: Response): Promise<void>
   try {
     const {
       employeeId, projectId, taskId, date, startTime, endTime, startAtUtc, endAtUtc,
+      assignmentId,
       task, description, plannedHours, actualHours, status, category, completedAt,
       parentTaskId, taskSequence, totalTaskHours, isPaused, pausedAt, resumedAt,
       isRecurring, recurrenceType, recurrenceInterval, recurrenceEndDate,
@@ -127,20 +129,35 @@ export const createTimeSlot = async (req: Request, res: Response): Promise<void>
       finalEndAtUtc,
     });
 
+    // Проверяем валидность assignmentId, чтобы не нарушить FK
+    let assignmentIdToUse = assignmentId || null;
+    if (assignmentId) {
+      try {
+        const check = await pool.query('SELECT id FROM task_assignments WHERE id = $1', [assignmentId]);
+        if (check.rows.length === 0) {
+          console.warn('Assignment not found for provided assignmentId, saving slot without assignment link:', assignmentId);
+          assignmentIdToUse = null;
+        }
+      } catch (e) {
+        console.warn('Assignment check failed, fallback to null assignmentId');
+        assignmentIdToUse = null;
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO time_slots (
-        employee_id, project_id, task_id, date, start_time, end_time, start_at_utc, end_at_utc,
+        employee_id, project_id, task_id, assignment_id, date, start_time, end_time, start_at_utc, end_at_utc,
         task, description, planned_hours, actual_hours, status, category, completed_at,
         parent_task_id, task_sequence, total_task_hours, is_paused, paused_at, resumed_at,
         is_recurring, recurrence_type, recurrence_interval, recurrence_end_date,
         recurrence_days, parent_recurring_id, recurrence_count,
         deadline, deadline_type, is_assigned_by_admin, deadline_reason, created_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, NOW()
       ) RETURNING *`,
       [
-        employeeId, projectId, taskId, date, startTime, endTime, finalStartAtUtc, finalEndAtUtc,
+        employeeId, projectId, taskId, assignmentIdToUse, date, startTime, endTime, finalStartAtUtc, finalEndAtUtc,
         task, description, plannedHours || 0, actualHours || 0, status || 'planned', category || 'general', completedAt,
         parentTaskId, taskSequence, totalTaskHours, isPaused || false, pausedAt, resumedAt,
         isRecurring || false, recurrenceType, recurrenceInterval, recurrenceEndDate,
@@ -170,6 +187,7 @@ export const updateTimeSlot = async (req: Request, res: Response): Promise<void>
       employeeId: 'employee_id',
       projectId: 'project_id',
       taskId: 'task_id',
+      assignmentId: 'assignment_id',
       date: 'date',
       startTime: 'start_time',
       endTime: 'end_time',

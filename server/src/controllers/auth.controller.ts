@@ -14,7 +14,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Находим пользователя
     const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND has_account = true',
+      `SELECT 
+         id,
+         name,
+         email,
+         role,
+         position,
+         has_account,
+         password,
+         to_char(birthday, 'YYYY-MM-DD') AS birthday,
+         to_char(employment_date, 'YYYY-MM-DD') AS employment_date,
+         to_char(termination_date, 'YYYY-MM-DD') AS termination_date,
+         timezone
+       FROM users
+       WHERE email = $1 AND has_account = true`,
       [email]
     );
 
@@ -89,7 +102,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const result = await pool.query(
       `INSERT INTO users (name, email, password, role, has_account, created_at)
        VALUES ($1, $2, $3, $4, $5, NOW())
-       RETURNING *`,
+       RETURNING 
+         id,
+         name,
+         email,
+         role,
+         position,
+         has_account,
+         to_char(birthday, 'YYYY-MM-DD') AS birthday,
+         to_char(employment_date, 'YYYY-MM-DD') AS employment_date,
+         to_char(termination_date, 'YYYY-MM-DD') AS termination_date,
+         timezone`,
       [name, email, hashedPassword, 'employee', true]
     );
 

@@ -160,16 +160,16 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       setFormData({
         employeeId: slot.employeeId,
         projectId: slot.projectId,
-        date: converted.date,
-        startTime: converted.startTime,
-        endTime: converted.endTime,
+        date: converted.date || slot.date || new Date().toISOString().split('T')[0],
+        startTime: converted.startTime || slot.startTime || '',
+        endTime: converted.endTime || slot.endTime || '',
         task: slot.task,
         taskTitle: slot.task,
         taskDescription: '',
         plannedHours: slot.plannedHours,
         actualHours: slot.actualHours,
         status: slot.status,
-        category: slot.category,
+        category: slot.category || '',
         parentTaskId: slot.parentTaskId,
         taskSequence: slot.taskSequence,
         totalTaskHours: slot.totalTaskHours,
@@ -309,6 +309,8 @@ export const TimeSlotModal: React.FC<TimeSlotModalProps> = ({
       task: formData.taskTitle || formData.task || '',
       // Пробрасываем описание для создания связанной задачи в проекте
       calendarDescription: formData.taskDescription,
+      // Привязка к назначению, если передана из бэклога/распределения
+      assignmentId: (slot as any)?.assignmentId || (preselectedTask as any)?.assignmentId,
     } as any;
     
     // Проверяем ограничения для задач, назначенных админом

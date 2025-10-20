@@ -16,7 +16,19 @@ interface TaskDetailViewProps {
   project: Project;
   timeSlots: TimeSlot[];
   onCreateTimeSlot: (slot: Omit<TimeSlot, 'id'>) => void;
-  onAssignEmployee: (taskId: string, employeeId: string, allocatedHours: number) => void;
+  onUpdateTimeSlot?: (id: string, updates: Partial<TimeSlot>) => void;
+  onDeleteTimeSlot?: (id: string) => void;
+  onAssignEmployee: (
+    taskId: string,
+    employeeId: string,
+    allocatedHours: number,
+    deadline?: string,
+    deadlineType?: 'soft' | 'hard',
+    deadlineReason?: string,
+    priority?: 'low' | 'medium' | 'high' | 'urgent',
+    title?: string,
+    description?: string,
+  ) => void;
   onUpdateAssignment: (assignmentId: string, updates: Partial<TaskAssignment>) => void;
   onRemoveAssignment: (assignmentId: string) => void;
   calculateTaskOverrun: (task: Task) => number;
@@ -33,6 +45,8 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
   project,
   timeSlots,
   onCreateTimeSlot,
+  onUpdateTimeSlot,
+  onDeleteTimeSlot,
   onAssignEmployee,
   onUpdateAssignment,
   onRemoveAssignment,
@@ -44,6 +58,8 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
   const [selectedAssignment, setSelectedAssignment] = useState<TaskAssignment | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [allocatedHours, setAllocatedHours] = useState(0);
+  const [assignmentTitle, setAssignmentTitle] = useState('');
+  const [assignmentDescription, setAssignmentDescription] = useState('');
   const { hideExtended } = React.useContext(UiPreferencesContext);
 
   if (!isOpen) return null;
@@ -73,10 +89,12 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
 
   const handleAssignEmployee = () => {
     if (selectedEmployeeId && allocatedHours > 0) {
-      onAssignEmployee(task.id, selectedEmployeeId, allocatedHours);
+      onAssignEmployee(task.id, selectedEmployeeId, allocatedHours, undefined, 'soft', undefined, 'medium', assignmentTitle, assignmentDescription);
       setShowAssignModal(false);
       setSelectedEmployeeId('');
       setAllocatedHours(0);
+      setAssignmentTitle('');
+      setAssignmentDescription('');
     }
   };
 
@@ -245,6 +263,10 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
             {assignments.length > 0 ? (
               <div className="space-y-4">
                 {assignments.map((assignment) => {
+                  const relatedSlots = timeSlots.filter(ts => (ts as any).assignmentId === assignment.id);
+                  const distributedPlanned = relatedSlots.reduce((sum, s) => sum + (s.plannedHours || 0), 0);
+                  const remainingPlanned = Math.max(assignment.allocatedHours - distributedPlanned, 0);
+                  const hasSlots = relatedSlots.length > 0;
                   const employeeOverrun = calculateEmployeeOverrun(task.id, assignment.employeeId);
                   return (
                     <div key={assignment.id} className="bg-gray-50 rounded-lg p-4">
@@ -285,15 +307,37 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
                             </div>
                           </div>
 
-                          {/* Progress bar for employee */}
+                          {/* Заголовок/описание части */}
+                          {(assignment as any).title && (
+                            <div className="mt-2 text-sm text-gray-900 font-medium">{(assignment as any).title}</div>
+                          )}
+                          {(assignment as any).description && (
+                            <div className="mt-1 text-sm text-gray-600">{(assignment as any).description}</div>
+                          )}
+
+                          {/* Индикатор распределения по слотам */}
+                          <div className="mt-3 text-sm text-gray-700">
+                            <span className="font-medium">Распределено:</span>
+                            <span className="ml-1">{distributedPlanned}ч / {assignment.allocatedHours}ч</span>
+                            {hasSlots && (
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800 border border-green-200">
+                                {relatedSlots.length} слот(а)
+                              </span>
+                            )}
+                            {remainingPlanned > 0 && (
+                              <span className="ml-2 text-xs text-orange-600">осталось: {remainingPlanned}ч</span>
+                            )}
+                          </div>
+
+                          {/* Progress bar for employee: заполнение по распределённым часам */}
                           <div className="mt-3">
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  assignment.actualHours > assignment.allocatedHours ? 'bg-red-500' : 'bg-green-500'
+                                  remainingPlanned === 0 ? 'bg-green-500' : 'bg-blue-500'
                                 }`}
                                 style={{ 
-                                  width: `${Math.min((assignment.actualHours / assignment.allocatedHours) * 100, 100)}%` 
+                                  width: `${Math.min((distributedPlanned / assignment.allocatedHours) * 100, 100)}%`
                                 }}
                               />
                             </div>
@@ -301,13 +345,23 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
                         </div>
 
                         <div className="flex items-center space-x-2 ml-4">
-                          <button
-                            onClick={() => handleDistributeToEmployee(assignment)}
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
-                            title="Распределить в календарь"
-                          >
-                            <Calendar className="h-4 w-4" />
-                          </button>
+                          {hasSlots ? (
+                            <button
+                              onClick={() => handleDistributeToEmployee(assignment)}
+                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+                              title="Редактировать распределение"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDistributeToEmployee(assignment)}
+                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition duration-200"
+                              title="Распределить в календарь"
+                            >
+                              <Calendar className="h-4 w-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               if (window.confirm(`Удалить назначение для ${getEmployeeName(assignment.employeeId)}?`)) {
@@ -362,8 +416,17 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
           employee={employees.find(emp => emp.id === selectedAssignment.employeeId)!}
           task={task}
           project={project}
-          timeSlots={timeSlots}
-          onCreateTimeSlot={onCreateTimeSlot}
+          projects={[project]}
+          timeSlots={timeSlots.filter(ts => (ts as any).assignmentId === selectedAssignment.id)}
+          onCreateTimeSlot={(slot) => onCreateTimeSlot({
+            ...slot,
+            assignmentId: selectedAssignment.id,
+            task: (selectedAssignment as any).title || slot.task || task.name,
+            description: (selectedAssignment as any).description || slot.description,
+          })}
+          onUpdateTimeSlot={onUpdateTimeSlot}
+          onDeleteTimeSlot={onDeleteTimeSlot}
+          onUpdateAssignment={onUpdateAssignment}
         />
       )}
         {/* Assign Employee Modal */}
@@ -420,6 +483,32 @@ export const TaskDetailView: React.FC<TaskDetailViewProps> = ({
                     <p className="text-xs text-gray-500 mt-1">
                       Доступно для распределения: {remainingHours}ч
                     </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Заголовок части
+                    </label>
+                    <input
+                      type="text"
+                      value={assignmentTitle}
+                      onChange={(e) => setAssignmentTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Напр. Верстка лендинга"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Описание части
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={assignmentDescription}
+                      onChange={(e) => setAssignmentDescription(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Детально опишите, что должен сделать сотрудник"
+                    />
                   </div>
                 </div>
 

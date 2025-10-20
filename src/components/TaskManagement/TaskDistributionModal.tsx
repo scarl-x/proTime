@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, AlertCircle, CheckCircle, Zap } from 'lucide-react';
-import { TaskAssignment, User as UserType, Project, TimeSlot } from '../../types';
+import { TaskAssignment, User as UserType, Project, TimeSlot, TaskCategory } from '../../types';
 import { formatDate, getWeekDates, getDayName } from '../../utils/dateUtils';
 import { calculateRecommendedDeadline, calculateAdvancedDeadline, validateDeadline, DEFAULT_PLANNING_FACTOR, DEFAULT_PRIORITY_BUFFERS } from '../../utils/deadlineUtils';
+import { AssignmentSlotsEditor } from './AssignmentSlotsEditor';
+import { DisplayTimezoneContext } from '../../utils/timezoneContext';
+import { convertLocalToUtc } from '../../utils/timezone';
 
 interface TaskDistributionModalProps {
   isOpen: boolean;
@@ -11,8 +14,13 @@ interface TaskDistributionModalProps {
   employee: UserType;
   task: { id: string; name: string; description: string };
   project: Project;
+  projects: Project[];
+  categories?: TaskCategory[];
   timeSlots: TimeSlot[];
   onCreateTimeSlot: (slot: Omit<TimeSlot, 'id'>) => void;
+  onUpdateTimeSlot?: (id: string, updates: Partial<TimeSlot>) => void;
+  onDeleteTimeSlot?: (id: string) => void;
+  onUpdateAssignment?: (id: string, updates: Partial<TaskAssignment>) => void;
 }
 
 export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
@@ -22,9 +30,15 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
   employee,
   task,
   project,
+  projects,
+  categories,
   timeSlots,
   onCreateTimeSlot,
+  onUpdateTimeSlot,
+  onDeleteTimeSlot,
+  onUpdateAssignment,
 }) => {
+  const effectiveZone = React.useContext(DisplayTimezoneContext) ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [selectedWeek, setSelectedWeek] = useState(() => {
     const today = new Date();
     const monday = new Date(today);
@@ -32,6 +46,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
     return monday.toISOString().split('T')[0];
   });
   const [distributionMode, setDistributionMode] = useState<'auto' | 'manual'>('auto');
+  const [isEditMode, setIsEditMode] = useState(false);
   const [autoDistribution, setAutoDistribution] = useState({
     startDate: new Date().toISOString().split('T')[0],
     hoursPerDay: 8,
@@ -61,7 +76,17 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
   } | null>(null);
 
   const weekDates = getWeekDates(selectedWeek);
-  const remainingHours = assignment.allocatedHours - assignment.actualHours;
+  const distributedPlanned = timeSlots.reduce((sum, s) => sum + (s.plannedHours || 0), 0);
+  const remainingHours = Math.max(assignment.allocatedHours - distributedPlanned, 0);
+
+  // Инициализируем режим редактирования если есть слоты
+  useEffect(() => {
+    if (timeSlots.length > 0) {
+      setIsEditMode(true);
+    } else {
+      setIsEditMode(false);
+    }
+  }, [timeSlots]);
 
   // Автоматически рассчитываем дедлайн при инициализации
   useEffect(() => {
@@ -71,9 +96,10 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
   }, [assignment.allocatedHours]);
 
   const getEmployeeScheduleForDate = (date: string) => {
-    return timeSlots.filter(slot => 
-      slot.employeeId === employee.id && slot.date === date
-    );
+    return timeSlots.filter(slot => {
+      const slotDate = (slot.date || '').split('T')[0];
+      return slot.employeeId === employee.id && slotDate === date;
+    });
   };
 
   const isDateAvailable = (date: string, startTime: string, endTime: string) => {
@@ -186,16 +212,14 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
         return;
       }
       
-      // Создаем временные слоты
+      // Создаем временные слоты (с конвертацией локального времени в UTC)
       for (const slot of slots) {
         await new Promise(resolve => {
+          const utc = convertLocalToUtc(slot.date, slot.startTime, slot.endTime, effectiveZone);
           onCreateTimeSlot({
             employeeId: employee.id,
             projectId: project.id,
             taskId: task.id,
-            date: slot.date,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
             task: `${task.name} (из задачи проекта)`,
             plannedHours: slot.hours,
             actualHours: 0,
@@ -206,6 +230,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
             deadlineType: deadlineData.deadlineType,
             isAssignedByAdmin: true,
             deadlineReason: deadlineData.deadlineReason,
+            ...utc,
           });
           resolve(true);
         });
@@ -273,16 +298,14 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
         return;
       }
       
-      // Создаем временные слоты
+      // Создаем временные слоты (с конвертацией локального времени в UTC)
       for (const slot of manualSlots) {
         await new Promise(resolve => {
+          const utc = convertLocalToUtc(slot.date, slot.startTime, slot.endTime, effectiveZone);
           onCreateTimeSlot({
             employeeId: employee.id,
             projectId: project.id,
             taskId: task.id,
-            date: slot.date,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
             task: `${task.name} (из задачи проекта)`,
             plannedHours: slot.hours,
             actualHours: 0,
@@ -293,6 +316,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
             deadlineType: deadlineData.deadlineType,
             isAssignedByAdmin: true,
             deadlineReason: deadlineData.deadlineReason,
+            ...utc,
           });
           resolve(true);
         });
@@ -325,6 +349,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
     setSelectedWeek(newWeek.toISOString().split('T')[0]);
   };
 
+
   if (!isOpen) return null;
 
   const autoSlots = distributionMode === 'auto' ? calculateAutoDistribution() : [];
@@ -337,7 +362,7 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
         <div className="flex items-center justify-between p-6 border-b">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Распределить задачу в календарь
+              {isEditMode ? 'Редактировать распределение' : 'Распределить задачу в календарь'}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {employee.name} • {task.name}
@@ -352,6 +377,47 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
         </div>
 
         <div className="p-6">
+          {/* Режим редактирования существующих слотов */}
+          {isEditMode && (
+            <div className="mb-6">
+              <AssignmentSlotsEditor
+                assignment={assignment}
+                employee={employee}
+                timeSlots={timeSlots}
+                projects={projects}
+                categories={categories}
+                onUpdateTimeSlot={onUpdateTimeSlot}
+                onDeleteTimeSlot={onDeleteTimeSlot}
+                onUpdateAssignment={onUpdateAssignment}
+              />
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setIsEditMode(false)}
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition duration-200"
+                >
+                  Добавить новые слоты
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Existing Slots Editor - только в режиме добавления */}
+          {!isEditMode && timeSlots.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-sm font-medium text-gray-900 mb-3">Существующие слоты ({timeSlots.length})</h4>
+              <div className="space-y-3">
+                {timeSlots.map((slot) => (
+                  <ExistingSlotEditor
+                    key={slot.id}
+                    slot={slot}
+                    onSave={(updates) => onUpdateTimeSlot && slot.id && onUpdateTimeSlot(slot.id, updates)}
+                    onDelete={() => onDeleteTimeSlot && slot.id && onDeleteTimeSlot(slot.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Distribution Result Notification */}
           {distributionResult && (
             <div className={`mb-6 p-4 rounded-lg border ${
@@ -370,7 +436,8 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
             </div>
           )}
 
-          {/* Assignment Info */}
+          {/* Assignment Info */
+          }
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
@@ -378,8 +445,8 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
                 <div className="text-blue-900 font-bold">{assignment.allocatedHours}ч</div>
               </div>
               <div>
-                <span className="text-blue-700 font-medium">Потрачено:</span>
-                <div className="text-blue-900 font-bold">{assignment.actualHours}ч</div>
+                <span className="text-blue-700 font-medium">Распределено:</span>
+                <div className="text-blue-900 font-bold">{distributedPlanned}ч</div>
               </div>
               <div>
                 <span className="text-blue-700 font-medium">Осталось распределить:</span>
@@ -389,7 +456,8 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
           </div>
 
 
-          {/* Distribution Mode */}
+          {/* Distribution Mode - только в режиме добавления */}
+          {!isEditMode && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Способ распределения
@@ -427,9 +495,10 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
               </button>
             </div>
           </div>
+          )}
 
-          {/* Auto Distribution Settings */}
-          {distributionMode === 'auto' && (
+          {/* Auto Distribution Settings - только в режиме добавления */}
+          {!isEditMode && distributionMode === 'auto' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -736,8 +805,8 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
             </div>
           )}
 
-          {/* Manual Distribution */}
-          {distributionMode === 'manual' && (
+          {/* Manual Distribution - только в режиме добавления */}
+          {!isEditMode && distributionMode === 'manual' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium text-gray-900">
@@ -938,6 +1007,104 @@ export const TaskDistributionModal: React.FC<TaskDistributionModalProps> = ({
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+
+// Редактор существующего слота назначения
+const ExistingSlotEditor: React.FC<{
+  slot: TimeSlot;
+  onSave: (updates: Partial<TimeSlot>) => void;
+  onDelete: () => void;
+}> = ({ slot, onSave, onDelete }) => {
+  const [local, setLocal] = useState({
+    date: (slot.date || '').split('T')[0],
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    plannedHours: slot.plannedHours,
+    status: slot.status,
+    description: slot.description || '',
+  });
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Дата</label>
+          <input
+            type="date"
+            value={local.date}
+            onChange={(e) => setLocal({ ...local, date: e.target.value })}
+            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Начало</label>
+          <input
+            type="time"
+            value={local.startTime}
+            onChange={(e) => setLocal({ ...local, startTime: e.target.value })}
+            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Окончание</label>
+          <input
+            type="time"
+            value={local.endTime}
+            onChange={(e) => setLocal({ ...local, endTime: e.target.value })}
+            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Часы</label>
+          <input
+            type="number"
+            step="0.1"
+            min="0.1"
+            max="12"
+            value={local.plannedHours}
+            onChange={(e) => setLocal({ ...local, plannedHours: parseFloat(e.target.value) || 0 })}
+            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Статус</label>
+          <select
+            value={local.status}
+            onChange={(e) => setLocal({ ...local, status: e.target.value as any })}
+            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="planned">Запланировано</option>
+            <option value="in-progress">В работе</option>
+            <option value="completed">Завершено</option>
+          </select>
+        </div>
+        <div className="flex items-end space-x-2">
+          <button
+            onClick={() => onSave(local)}
+            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          >
+            Сохранить
+          </button>
+          <button
+            onClick={onDelete}
+            className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+          >
+            Удалить
+          </button>
+        </div>
+      </div>
+      <div className="mt-2">
+        <label className="block text-xs font-medium text-gray-700 mb-1">Описание</label>
+        <textarea
+          rows={2}
+          value={local.description}
+          onChange={(e) => setLocal({ ...local, description: e.target.value })}
+          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
       </div>
     </div>
   );

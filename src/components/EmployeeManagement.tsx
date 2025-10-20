@@ -567,7 +567,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 
                 <div className="text-sm text-gray-600 mb-2">Пароль:</div>
                 <div className="font-mono text-lg text-gray-900 bg-white p-3 rounded border">
-                  {selectedEmployee.password || 'Не установлен'}
+                  {selectedEmployee.hasAccount ? 'Установлен (скрыт)' : 'Не установлен'}
                 </div>
               </div>
 

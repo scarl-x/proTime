@@ -5,7 +5,19 @@ import pool from '../config/database.js';
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query(
-      'SELECT * FROM users ORDER BY created_at ASC'
+      `SELECT 
+         id,
+         name,
+         email,
+         role,
+         position,
+         has_account,
+         to_char(birthday, 'YYYY-MM-DD') AS birthday,
+         to_char(employment_date, 'YYYY-MM-DD') AS employment_date,
+         to_char(termination_date, 'YYYY-MM-DD') AS termination_date,
+         timezone
+       FROM users
+       ORDER BY created_at ASC`
     );
 
     const users = result.rows.map(user => ({
@@ -32,7 +44,22 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
   try {
     const { id } = req.params;
 
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const result = await pool.query(
+      `SELECT 
+         id,
+         name,
+         email,
+         role,
+         position,
+         has_account,
+         to_char(birthday, 'YYYY-MM-DD') AS birthday,
+         to_char(employment_date, 'YYYY-MM-DD') AS employment_date,
+         to_char(termination_date, 'YYYY-MM-DD') AS termination_date,
+         timezone
+       FROM users
+       WHERE id = $1`,
+      [id]
+    );
 
     if (result.rows.length === 0) {
       res.status(404).json({ error: 'Пользователь не найден' });
@@ -82,7 +109,17 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const result = await pool.query(
       `INSERT INTO users (name, email, role, position, has_account, birthday, employment_date, termination_date, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-       RETURNING *`,
+       RETURNING 
+         id,
+         name,
+         email,
+         role,
+         position,
+         has_account,
+         to_char(birthday, 'YYYY-MM-DD') AS birthday,
+         to_char(employment_date, 'YYYY-MM-DD') AS employment_date,
+         to_char(termination_date, 'YYYY-MM-DD') AS termination_date,
+         timezone`,
       [name, email, role || 'employee', position, false, birthday, employmentDate, terminationDate]
     );
 
@@ -122,7 +159,17 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
            termination_date = COALESCE($7, termination_date),
            timezone = COALESCE($8, timezone)
        WHERE id = $9
-       RETURNING *`,
+       RETURNING 
+         id,
+         name,
+         email,
+         role,
+         position,
+         has_account,
+         to_char(birthday, 'YYYY-MM-DD') AS birthday,
+         to_char(employment_date, 'YYYY-MM-DD') AS employment_date,
+         to_char(termination_date, 'YYYY-MM-DD') AS termination_date,
+         timezone`,
       [name, email, role, position, birthday, employmentDate, terminationDate, timezone, id]
     );
 
