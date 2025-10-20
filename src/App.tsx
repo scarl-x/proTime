@@ -270,13 +270,10 @@ function App() {
     if (editingSlot) {
       updateTimeSlot(editingSlot.id, slotData);
     } else {
-      // Создаем временной слот
-      addTimeSlot(slotData);
-      
-      // Если это новый слот (не редактирование) и указан проект, создаем задачу
+      // Если это новый слот и из него нужно создать задачу — сначала создаём задачу и назначение,
+      // затем сохраняем слот уже привязанным к задаче/назначению.
       if (slotData.projectId && (slotData as any).task && !(slotData as any).taskId) {
         try {
-          // Создаем задачу в проекте
           const slotStatus = (slotData as any).status as ('planned'|'in-progress'|'completed') | undefined;
           const taskStatus = slotStatus === 'in-progress' ? 'in-progress'
                             : slotStatus === 'completed' ? 'closed'
@@ -284,28 +281,34 @@ function App() {
           const newTask = await createTask({
             projectId: slotData.projectId,
             name: (slotData as any).task,
-            description: ((slotData as any).calendarDescription ? `${(slotData as any).calendarDescription}\n` : '') + `Создано из календаря` ,
+            description: ((slotData as any).calendarDescription ? `${(slotData as any).calendarDescription}\n` : '') + `Создано из календаря`,
             plannedHours: slotData.plannedHours,
             actualHours: 0,
-            hourlyRate: 0, // Стандартная ставка
+            hourlyRate: 0,
             status: taskStatus,
             createdBy: user.id,
           });
-          
-          // Назначаем задачу на текущего пользователя
-          await assignTaskToEmployee(newTask.id, user.id, slotData.plannedHours);
-          
-          // Обновляем временной слот с taskId
-          const updatedSlot = { ...slotData, taskId: newTask.id };
-          // Обновляем слот с taskId для связи с задачей
-          if ('id' in slotData) {
-            updateTimeSlot(slotData.id, updatedSlot);
-          }
-          
+
+          // Создаём назначение и получаем его id, чтобы проставить в слот
+          const newAssignment = await assignTaskToEmployee(newTask.id, user.id, slotData.plannedHours);
+
+          // Создаём слот уже с привязкой к задаче и назначению
+          await addTimeSlot({
+            ...slotData,
+            taskId: newTask.id,
+            // @ts-ignore: расширенное поле для привязки к назначению
+            assignmentId: (newAssignment as any)?.id,
+            // Сохраняем название задачи на случай отображения в календаре
+            task: (slotData as any).task,
+          } as Omit<TimeSlot, 'id'>);
         } catch (error) {
           console.error('Error creating task from time slot:', error);
-          // Не показываем ошибку пользователю, так как временной слот уже создан
+          // Если что-то пошло не так, хотя бы создадим сам слот без привязки
+          await addTimeSlot(slotData as Omit<TimeSlot, 'id'>);
         }
+      } else {
+        // Обычный сценарий: просто создаём слот
+        await addTimeSlot(slotData as Omit<TimeSlot, 'id'>);
       }
     }
     setEditingSlot(null);
