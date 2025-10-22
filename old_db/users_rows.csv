@@ -1,0 +1,15 @@
+id,name,email,role,position,has_account,password,created_at,birthday,employment_date,termination_date,department,timezone
+33f3b0ac-60ea-4d41-8f4e-d81fcb45d433,Александр Котельников,a.kotelnikov@yavlenie.pro,employee,devops,true,$2a$10$L.bSzveLhCLySiVjvKP7a.9K8zJkT0O7VQhAU.LyBf/6WRhMz0FIq,2025-09-10 19:26:08.675237+00,,,,,Asia/Yekaterinburg
+3fa63763-42e0-4ffa-8eb4-e25762df96db,"Антон Кужелёв ",a.kuzhelev@yavlenie.pro,employee,developer,true,$2a$10$clvKB8dKlt/wWbiRFgL7MuZw5HOpHFRJpkSUXcmN0/xh3r7Kr9vBe,2025-09-10 19:26:47.303836+00,,,,,Asia/Novosibirsk
+43d9b4e2-255d-41d3-8bce-4b59332ee697,Рита Сафронова,r.safronova@yavlenie.pro,employee,junior-developer,true,$2a$10$pWzl10Ww9QFN3fCNEYKbvu.M5h0f6AIQDskwsuDm7ZuCr67UV99Wq,2025-09-10 14:24:16.276799+00,2003-08-06,2025-04-22,,,Europe/Samara
+46f9b199-11a1-460e-b285-f3ca3b11bd3e,Александра Шарюкова,a.sharyukov@yavlenie.pro,admin,project-manager,true,$2a$10$QDQeLebht6FE.fEC3GKR3.O1SKvL7iXDFDkZTVKDSKadf/twWcUee,2025-09-10 19:30:53.57232+00,2003-08-18,,,,Europe/Moscow
+607039f1-a303-4c0b-a259-247fcb105e5b,"Юрий Евстратов ",y.evstratov@yavlenie.pro,admin,cpo,true,$2a$10$AVCaq9qvkr9z.TWMws2aguvg6V6LnyZKEWyNTaFKfdAGXGon8z95m,2025-09-10 19:22:26.938619+00,2025-09-01,2016-01-01,,,Europe/Moscow
+71c3e755-066e-4c10-ad5f-81e807fb6aa7,Артём Иванов,a.ivanov@yavlenie.pro,employee,developer,true,$2a$10$M4Mhi12zjLySGoDExtIpb.0UF1/ys5s.HldUQgcLfBXHWUNo4qlym,2025-09-10 19:27:53.107534+00,,,,,Europe/Moscow
+85abf61d-fc4e-4197-9fe8-e20b695366a7,Алексей Кудаков,a.kudakov@yavlenie.pro,admin,cto,true,$2a$10$hFw3/NB5bhqrsER6Lg5CierbNDY0J5irQnuD0x1Y1mCuoszV3hUTm,2025-09-10 19:17:54.553457+00,,,,,Europe/Moscow
+8d97a5a2-98ea-4b4b-8f4a-0069d389e2ec,Админ Системы,admin@company.com,admin,,true,$2a$10$Bsou2eDHWJcjCIleRcHD8eYBFVpwl3GRTEne2XnFdzk.WJsGseOh2,2025-09-21 22:50:46.34034+00,1990-03-15,2024-01-15,,,Europe/Moscow
+9d6f7300-cca0-41a2-84c8-81f0eb490a58,Екатерина Турышева,e.turysheva@yavlenie.pro,employee,senior-developer,true,$2a$10$fMPRasPucEh5Vdvg2SRg2.l59y5QEbenDfogOWja0LQi0ZO19MXzm,2025-09-10 19:27:19.625061+00,,,,,Asia/Yekaterinburg
+a8abb6c3-d51c-4039-a1f2-93f5d98d2a20,Наталья Семёнова,n.semenova@yavlenie.pro,employee,senior-developer,true,$2a$10$ZdTSs20Xl8PQvi4XUI7Qeuq6HXDaro6mpg1e/kQA./bptNR.ABvvW,2025-09-10 19:29:11.325534+00,,,,,Asia/Yekaterinburg
+c0f5e529-a772-4f59-b3d9-c70e10d3fae0,Василий Интересов,v.interesiv@yavlenie.pro,admin,cfo,true,$2a$10$vzbF9HR0CoSLDQdF1nwRXOoaTAYRmt7CD85bny.AG2.NnJGjLl1pe,2025-09-26 08:27:40.491647+00,,,,,Europe/Moscow
+df299a0a-e446-47fa-97d8-1fbad4602add,Евгения,art@yavlenie.pro,employee,designer,false,,2025-09-10 20:42:26.133694+00,,,,,
+df943449-d2c0-4ac8-bd3d-620c15690fa9,Тимофей Проскуряков,t.proskuryakov@yavlenie.pro,employee,tester,true,$2a$10$F.fYOH7I6t8eyTYnmuaNd.yQJFoTTcqhl6VY7fbmwsDVK4jvp9c/.,2025-09-10 19:30:16.636302+00,,,,,Asia/Yekaterinburg
+e67f47f1-1413-416f-b6fd-c640886ef4fe,"Рустем Ямалтдинов ",r.yamaltdinov@yavlenie.pro,employee,developer,true,$2a$10$YY4te2CiRBc7OjK4aIOPcuirSkY2O74QLW8gMh.oVnC/RJRzq4dra,2025-09-10 19:29:37.491213+00,,,,,Europe/Moscow

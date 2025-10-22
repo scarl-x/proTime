@@ -13,6 +13,7 @@ import tasksRoutes from './routes/tasks.routes.js';
 import taskCategoriesRoutes from './routes/taskCategories.routes.js';
 import leaveRequestsRoutes from './routes/leaveRequests.routes.js';
 import bookingsRoutes from './routes/bookings.routes.js';
+import { runAutoMigration } from './utils/autoMigration.js';
 
 dotenv.config();
 
@@ -59,6 +60,9 @@ const startServer = async () => {
     // Проверяем подключение к БД
     await pool.query('SELECT NOW()');
     console.log('✅ Подключение к базе данных PostgreSQL успешно');
+    
+    // Запускаем автоматическую миграцию
+    await runAutoMigration();
     
     // Запускаем сервер
     app.listen(PORT, () => {

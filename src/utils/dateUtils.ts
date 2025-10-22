@@ -1,10 +1,12 @@
-export const formatDate = (date: Date | string): string => {
+export const formatDate = (date: Date | string | null | undefined): string => {
+  if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (!(d instanceof Date) || isNaN(d.getTime())) return '';
   return d.toLocaleDateString('ru-RU');
 };
 
-export const formatTime = (time: string): string => {
-  return time;
+export const formatTime = (time: string | null | undefined): string => {
+  return time ?? '';
 };
 
 export const getWeekStart = (date: Date): string => {
@@ -28,11 +30,15 @@ export const getWeekDates = (weekStart: string): string[] => {
   return dates;
 };
 
-export const getDayName = (date: string): string => {
+export const getDayName = (date: string | null | undefined): string => {
+  if (!date) return '';
   const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('ru-RU', { weekday: 'short' });
 };
 
-export const getMonthName = (date: Date): string => {
+export const getMonthName = (date: Date | null | undefined): string => {
+  if (!date) return '';
+  if (!(date instanceof Date) || isNaN(date.getTime())) return '';
   return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 };
