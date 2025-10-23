@@ -41,8 +41,8 @@ async function prepareUsersCSV() {
   try {
     console.log('🔐 Подготовка CSV файла пользователей с хэшированными паролями...\n');
     
-    const inputPath = path.join(__dirname, '../../old_db/users_rows.csv');
-    const outputPath = path.join(__dirname, '../../old_db/users_rows_hashed.csv');
+    const inputPath = path.join(__dirname, '../old_db/users_rows.csv');
+    const outputPath = path.join(__dirname, '../old_db/users_rows_hashed.csv');
     
     // Читаем исходный CSV
     const users = readCSV(inputPath);

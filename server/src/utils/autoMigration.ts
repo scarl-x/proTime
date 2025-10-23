@@ -113,7 +113,7 @@ async function migrateData(): Promise<void> {
     
     // 1. Миграция пользователей
     console.log('📝 Мигрируем пользователей...');
-    const users = await readCSV(path.join(__dirname, '../../../old_db/users_rows.csv'));
+    const users = await readCSV(path.join(__dirname, '../old_db/users_rows.csv'));
     
     for (const user of users) {
       try {
@@ -158,7 +158,7 @@ async function migrateData(): Promise<void> {
     
     // 2. Миграция проектов
     console.log('📝 Мигрируем проекты...');
-    const projects = await readCSV(path.join(__dirname, '../../../old_db/projects_rows.csv'));
+    const projects = await readCSV(path.join(__dirname, '../old_db/projects_rows.csv'));
     
     for (const project of projects) {
       try {
@@ -200,7 +200,7 @@ async function migrateData(): Promise<void> {
     
     // 3. Миграция категорий задач
     console.log('📝 Мигрируем категории задач...');
-    const taskCategories = await readCSV(path.join(__dirname, '../../../old_db/task_categories_rows.csv'));
+    const taskCategories = await readCSV(path.join(__dirname, '../old_db/task_categories_rows.csv'));
     
     for (const category of taskCategories) {
       try {
@@ -239,7 +239,7 @@ async function migrateData(): Promise<void> {
     
     // 4. Миграция задач
     console.log('📝 Мигрируем задачи...');
-    const tasks = await readCSV(path.join(__dirname, '../../../old_db/tasks_rows.csv'));
+    const tasks = await readCSV(path.join(__dirname, '../old_db/tasks_rows.csv'));
     
     // Получаем первого пользователя для случаев, когда created_by = null
     const firstUser = await client.query('SELECT id FROM users LIMIT 1');
@@ -289,7 +289,7 @@ async function migrateData(): Promise<void> {
     
     // 5. Миграция временных слотов
     console.log('📝 Мигрируем временные слоты...');
-    const timeSlots = await readCSV(path.join(__dirname, '../../../old_db/time_slots_rows.csv'));
+    const timeSlots = await readCSV(path.join(__dirname, '../old_db/time_slots_rows.csv'));
     
     for (const slot of timeSlots) {
       try {
@@ -392,7 +392,7 @@ async function migrateData(): Promise<void> {
     
     // 6. Миграция назначений задач
     console.log('📝 Мигрируем назначения задач...');
-    const taskAssignments = await readCSV(path.join(__dirname, '../../../old_db/task_assignments_rows.csv'));
+    const taskAssignments = await readCSV(path.join(__dirname, '../old_db/task_assignments_rows.csv'));
     
     for (const assignment of taskAssignments) {
       try {
@@ -437,7 +437,7 @@ async function migrateData(): Promise<void> {
     
     // 7. Миграция заявок на отпуск
     console.log('📝 Мигрируем заявки на отпуск...');
-    const leaveRequests = await readCSV(path.join(__dirname, '../../../old_db/leave_requests_rows.csv'));
+    const leaveRequests = await readCSV(path.join(__dirname, '../old_db/leave_requests_rows.csv'));
     
     for (const request of leaveRequests) {
       try {
@@ -487,7 +487,7 @@ async function migrateData(): Promise<void> {
     
     // 8. Миграция бронирований
     console.log('📝 Мигрируем бронирования...');
-    const bookings = await readCSV(path.join(__dirname, '../../../old_db/bookings_rows.csv'));
+    const bookings = await readCSV(path.join(__dirname, '../old_db/bookings_rows.csv'));
     
     for (const booking of bookings) {
       try {
@@ -571,7 +571,7 @@ export async function runAutoMigration(): Promise<void> {
     }
     
     // Проверяем наличие папки old_db
-    const oldDbPath = path.join(__dirname, '../../../old_db');
+    const oldDbPath = path.join(__dirname, '../old_db');
     if (!fs.existsSync(oldDbPath)) {
       console.log('📁 Папка old_db не найдена, пропускаем автоматическую миграцию');
       return;

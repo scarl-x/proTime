@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.DS_Store
+.env
+*.local
+.git
+.gitignore
+coverage
+
+# Ignore root-level items if build context is project root
+../node_modules
+../.git
+../*.log
+../dist
